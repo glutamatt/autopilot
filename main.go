@@ -33,14 +33,6 @@ type Vehicule struct {
 	Velocity float64
 }
 
-//GlobalAngle of a pos
-func (v Position) GlobalAngle() float64 {
-	if v.y == 0 {
-		return 0
-	}
-	return math.Atan(v.y / v.x)
-}
-
 //Drive a vehicule
 func (v *Vehicule) Drive(driving *Driving) {
 	v.Velocity += driving.Thrust
@@ -50,15 +42,39 @@ func (v *Vehicule) Drive(driving *Driving) {
 	debug("turningAngle", turningAngle)
 	debug("turningAngle Deg", turningAngle*180/math.Pi)
 	if turningAngle == 0 {
-		globalAngle := v.GlobalAngle()
-		v.Position.x += math.Cos(globalAngle) * v.Velocity
-		v.Position.y += math.Cos(math.Pi/2-globalAngle) * v.Velocity
+		v.Position.x += math.Cos(v.Rotation) * v.Velocity
+		v.Position.y += math.Cos(math.Pi/2-v.Rotation) * v.Velocity
 	} else {
-		coordLocalTurning := CoordLocalTurning(turningRadius, turningAngle)
-		debug("coordLocalTurning", coordLocalTurning)
-		v.Position = LocalToGlobal(coordLocalTurning, turningRadius, turningAngle, v)
-		debug("LocalToGlobal", v.Position)
 		v.Rotation += turningAngle
+		rotatePoint := RotatePoint(v.Position, turningRadius)
+		Rotate(&v.Position, turningAngle, rotatePoint)
+	}
+}
+
+//Rotate point around
+func Rotate(point *Position, angle float64, around Position) {
+	s, c := math.Sin(angle), math.Cos(angle)
+	point.x -= around.x
+	point.y -= around.y
+
+	xNew := point.x*c - point.y*s
+	yNew := point.x*s + point.y*c
+	point.x = xNew + around.x
+	point.y = yNew + around.y
+}
+
+//RotatePoint for turn
+func RotatePoint(pos Position, turningRadius float64) Position {
+	angle := 90 - math.Atan(pos.x/pos.y)
+	if turningRadius < 0 {
+		return Position{
+			x: pos.x + math.Sin(angle)*turningRadius,
+			y: pos.y - math.Cos(angle)*turningRadius,
+		}
+	}
+	return Position{
+		x: pos.x - math.Sin(angle)*turningRadius,
+		y: pos.y + math.Cos(angle)*turningRadius,
 	}
 }
 
@@ -68,25 +84,6 @@ func TurningAngle(velocity, turningRadius float64) float64 {
 		return 0
 	}
 	return velocity / turningRadius
-}
-
-//LocalToGlobal transpose local to global position
-func LocalToGlobal(localPos Position, turningRadius, turningAngle float64, v *Vehicule) Position {
-	globalAngle := v.GlobalAngle()
-	debug("globalAngle", globalAngle)
-
-	return Position{
-		x: math.Cos(globalAngle-turningAngle)*turningRadius + v.x,
-		y: math.Cos(math.Pi/2+turningAngle*2-globalAngle)*turningRadius + v.y,
-	}
-}
-
-//CoordLocalTurning on a local reference
-func CoordLocalTurning(turningRadius, turningAngle float64) Position {
-	return Position{
-		x: math.Abs(turningRadius) * math.Sin(turningAngle),
-		y: math.Abs(turningRadius) * math.Cos(turningAngle),
-	}
 }
 
 //GetTurningRadius from Driving.Turning
@@ -137,7 +134,7 @@ func main() {
 		opts.GeoM.Translate(v.x/scale, v.y/scale)
 		screen.DrawImage(square, opts)
 
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(50 * time.Millisecond)
 
 		return nil
 	}
