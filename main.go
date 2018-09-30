@@ -4,14 +4,18 @@ import (
 	"fmt"
 	"image/color"
 	"math"
-	"time"
 
 	"github.com/hajimehoshi/ebiten"
+	"github.com/hajimehoshi/ebiten/ebitenutil"
 )
 
-const minTurningRadius = 20
-const slowDownDefault = .5
-const turnInc = .001
+const minTurningRadius = 12
+const turnInc = .02
+const carWidth = 5
+const carHeight = 2
+const uiScale = 3.0
+const uiWidth = 1000
+const uiHeight = 1000
 
 //Position for Items
 type Position struct {
@@ -32,133 +36,129 @@ type Vehicule struct {
 }
 
 //Drive a vehicule
-func (v *Vehicule) Drive(driving *Driving) {
-	v.Velocity += driving.Thrust
-	v.Velocity -= slowDownDefault
+func (v *Vehicule) Drive(driving *Driving, seconds float64) {
+	v.Velocity += driving.Thrust * seconds
 	if v.Velocity < 0 {
 		v.Velocity = 0
 	}
-	turningRadius := GetTurningRadius(driving)
-	debug("turningRadius", turningRadius)
-	turningAngle := TurningAngle(v.Velocity, turningRadius)
-	debug("turningAngle", turningAngle)
-	debug("turningAngle Deg", turningAngle*180/math.Pi)
-	if turningAngle == 0 {
-		v.Position = Position{
-			x: v.x + math.Cos(v.Rotation)*v.Velocity,
-			y: v.y + math.Cos(math.Pi/2-v.Rotation)*v.Velocity,
-		}
-	} else {
-		v.Rotation += turningAngle
-		targetRotate := Position{
-			x: v.x + math.Cos(v.Rotation)*turningRadius,
-			y: v.y + math.Cos(math.Pi/2-v.Rotation)*turningRadius,
-		}
-		Rotate(&targetRotate, math.Pi/-2, v.Position)
-		Rotate(&v.Position, turningAngle, targetRotate)
+	if v.Velocity == 0 {
+		return
 	}
-}
-
-//Rotate point around
-func Rotate(point *Position, angle float64, around Position) {
-	s, c := math.Sin(angle), math.Cos(angle)
-	point.x -= around.x
-	point.y -= around.y
-
-	xNew := point.x*c - point.y*s
-	yNew := point.x*s + point.y*c
-	point.x = xNew + around.x
-	point.y = yNew + around.y
-}
-
-//TurningAngle from velocity and turningRadius
-func TurningAngle(velocity, turningRadius float64) float64 {
-	if velocity == 0 || turningRadius == 0 {
-		return 0
-	}
-	return velocity / turningRadius
-}
-
-//GetTurningRadius from Driving.Turning
-func GetTurningRadius(driving *Driving) float64 {
+	instantDist := v.Velocity * seconds
 	if driving.Turning == 0 {
+		v.Position = Position{
+			x: v.x + math.Cos(v.Rotation)*instantDist,
+			y: v.y + math.Cos(math.Pi/2-v.Rotation)*instantDist,
+		}
+		return
+	}
+	turningRadius := GetTurningRadius(driving.Turning)
+	turningAngle := TurningAngle(instantDist, turningRadius)
+	v.Rotation = math.Mod(v.Rotation+turningAngle, 2*math.Pi)
+
+	rotateCenterAngle := v.Rotation + math.Pi/2
+
+	rotateCenterFromV := Position{
+		x: math.Cos(rotateCenterAngle) * turningRadius,
+		y: math.Sin(rotateCenterAngle) * turningRadius,
+	}
+
+	vehiculePosFromRotatePoint := Position{
+		x: 0 - rotateCenterFromV.x,
+		y: 0 - rotateCenterFromV.y,
+	}
+
+	s, c := math.Sin(turningAngle), math.Cos(turningAngle)
+	v.Position = Position{
+		x: vehiculePosFromRotatePoint.x*c - vehiculePosFromRotatePoint.y*s + rotateCenterFromV.x + v.x,
+		y: vehiculePosFromRotatePoint.x*s + vehiculePosFromRotatePoint.y*c + rotateCenterFromV.y + v.y,
+	}
+}
+
+//TurningAngle from distance and turningRadius
+func TurningAngle(distance, turningRadius float64) float64 {
+	if distance == 0 || turningRadius == 0 {
+		return 0
+	}
+	return distance / turningRadius
+}
+
+//GetTurningRadius from turning
+func GetTurningRadius(turning float64) float64 {
+	if turning == 0 {
 		return 0
 	}
 
-	cap := 1.0 * minTurningRadius
-	if driving.Turning < 0 {
-		cap *= -1
-	}
-	return 1/driving.Turning + cap
+	return minTurningRadius / turning
 }
 
 func debug(v ...interface{}) {
 	fmt.Println(v...)
 }
 
-var square *ebiten.Image
-
 func main() {
 
-	v := Vehicule{Position: Position{y: 100}}
+	v := Vehicule{Position: Position{y: 20}}
 	drive := &Driving{}
 
+	var square *ebiten.Image
+	square, _ = ebiten.NewImage(int(carWidth*uiScale), int(carHeight*uiScale), ebiten.FilterNearest)
+	square.Fill(color.White)
+
 	update := func(screen *ebiten.Image) error {
-
-		println("----------------")
-
-		if ebiten.IsKeyPressed(ebiten.KeyUp) {
-			if drive.Thrust == 0 {
-				drive.Thrust = 1
-			}
-			drive.Thrust += 1 / drive.Thrust
-		} else {
-			drive.Thrust = 0
-		}
-
-		if ebiten.IsKeyPressed(ebiten.KeyLeft) {
-			if drive.Turning < 1 {
-				if drive.Turning < 0 {
-					drive.Turning = 0
-				}
-				drive.Turning += turnInc
-			}
-		} else {
-			if ebiten.IsKeyPressed(ebiten.KeyRight) {
-				if drive.Turning > -1 {
-					if drive.Turning > 0 {
-						drive.Turning = 0
-					}
-					drive.Turning -= turnInc
-				}
-			} else {
-				drive.Turning = 0
-			}
-		}
-
-		debug("drive.Turning", drive.Turning)
-
-		screen.Fill(color.NRGBA{0xff, 0x00, 0x00, 0xff})
-		if square == nil {
-			square, _ = ebiten.NewImage(3, 3, ebiten.FilterNearest)
-		}
-		square.Fill(color.White)
+		inputControls(drive)
+		v.Drive(drive, 1.0/60)
 
 		opts := &ebiten.DrawImageOptions{}
-		v.Drive(drive)
-		debug("v.Rotation", fmt.Sprintf("rot: %.3f", v.Rotation))
-		scale := 10.0
-		opts.GeoM.Reset()
-		opts.GeoM.Translate(v.x/scale, v.y/scale)
+		opts.GeoM.Translate(carWidth*uiScale/-4, carHeight*uiScale/-2)
+		opts.GeoM.Rotate(v.Rotation * -1)
+		opts.GeoM.Translate(carWidth*uiScale/4, carHeight*uiScale/2)
+		opts.GeoM.Translate(v.x*uiScale, v.y*uiScale*-1+uiHeight)
+		screen.Fill(color.NRGBA{0x88, 0x00, 0x00, 0xff})
 		screen.DrawImage(square, opts)
-
-		time.Sleep(100 * time.Millisecond)
-
+		ebitenutil.DebugPrint(screen, fmt.Sprintf(
+			"%#v\n%.1f km/h\n%.2f°",
+			drive, v.Velocity/1000*60*60, v.Rotation*180/math.Pi))
 		return nil
 	}
 
-	if err := ebiten.Run(update, 500, 500, 2, "Hello world!"); err != nil {
+	if err := ebiten.Run(update, uiWidth, uiHeight, 1, "Hello world!"); err != nil {
 		panic(err)
 	}
+}
 
+func inputControls(drive *Driving) {
+	if ebiten.IsKeyPressed(ebiten.KeyUp) {
+		drive.Thrust = 5
+	} else {
+		drive.Thrust = -4
+	}
+
+	if ebiten.IsKeyPressed(ebiten.KeyLeft) {
+		if drive.Turning < 1 {
+			if drive.Turning < 0 {
+				drive.Turning = 0
+			}
+			drive.Turning += turnInc
+		}
+	} else {
+		if ebiten.IsKeyPressed(ebiten.KeyRight) {
+			if drive.Turning > -1 {
+				if drive.Turning > 0 {
+					drive.Turning = 0
+				}
+				drive.Turning -= turnInc
+			}
+		} else {
+			if math.Abs(drive.Turning-turnInc) < turnInc*2 {
+				drive.Turning = 0
+			}
+			if drive.Turning > 0 {
+				drive.Turning -= turnInc * 2
+			}
+			if drive.Turning < 0 {
+				drive.Turning += turnInc * 2
+			}
+		}
+	}
 }
