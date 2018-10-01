@@ -14,8 +14,8 @@ const turnInc = .02
 const carWidth = 5
 const carHeight = 2
 const uiScale = 3.0
-const uiWidth = 1000
-const uiHeight = 1000
+const uiWidth = 500
+const uiHeight = 500
 
 //Position for Items
 type Position struct {
@@ -122,16 +122,20 @@ func main() {
 		return nil
 	}
 
-	if err := ebiten.Run(update, uiWidth, uiHeight, 1, "Hello world!"); err != nil {
+	if err := ebiten.Run(update, uiWidth, uiHeight, 2, "Hello world!"); err != nil {
 		panic(err)
 	}
 }
 
 func inputControls(drive *Driving) {
-	if ebiten.IsKeyPressed(ebiten.KeyUp) {
-		drive.Thrust = 5
+	if ebiten.IsKeyPressed(ebiten.KeyDown) {
+		drive.Thrust = -10
 	} else {
-		drive.Thrust = -4
+		if ebiten.IsKeyPressed(ebiten.KeyUp) {
+			drive.Thrust = 5
+		} else {
+			drive.Thrust = 0
+		}
 	}
 
 	if ebiten.IsKeyPressed(ebiten.KeyLeft) {
