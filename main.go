@@ -52,8 +52,8 @@ func (v *Vehicule) Drive(driving *Driving, seconds float64) {
 		}
 		return
 	}
-	turningRadius := GetTurningRadius(driving.Turning)
-	turningAngle := TurningAngle(instantDist, turningRadius)
+	turningRadius := minTurningRadius / driving.Turning
+	turningAngle := instantDist / turningRadius
 	v.Rotation = math.Mod(v.Rotation+turningAngle, 2*math.Pi)
 
 	rotateCenterAngle := v.Rotation + math.Pi/2
@@ -73,23 +73,6 @@ func (v *Vehicule) Drive(driving *Driving, seconds float64) {
 		x: vehiculePosFromRotatePoint.x*c - vehiculePosFromRotatePoint.y*s + rotateCenterFromV.x + v.x,
 		y: vehiculePosFromRotatePoint.x*s + vehiculePosFromRotatePoint.y*c + rotateCenterFromV.y + v.y,
 	}
-}
-
-//TurningAngle from distance and turningRadius
-func TurningAngle(distance, turningRadius float64) float64 {
-	if distance == 0 || turningRadius == 0 {
-		return 0
-	}
-	return distance / turningRadius
-}
-
-//GetTurningRadius from turning
-func GetTurningRadius(turning float64) float64 {
-	if turning == 0 {
-		return 0
-	}
-
-	return minTurningRadius / turning
 }
 
 func debug(v ...interface{}) {
