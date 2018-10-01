@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"image/color"
 	"math"
+	"math/rand"
+	"time"
 
 	"github.com/hajimehoshi/ebiten"
 	"github.com/hajimehoshi/ebiten/ebitenutil"
@@ -79,31 +81,59 @@ func debug(v ...interface{}) {
 	fmt.Println(v...)
 }
 
+func createRandomVehicule() *Vehicule {
+	return &Vehicule{
+		Position: Position{
+			x: rand.Float64() * uiHeight,
+			y: rand.Float64() * uiWidth,
+		},
+		Rotation: rand.Float64() * math.Pi * 2,
+	}
+}
+
 func main() {
+	vehicules := make([]*Vehicule, 30)
+	vehiculeImage, _ := ebiten.NewImage(int(carWidth*uiScale), int(carHeight*uiScale), ebiten.FilterNearest)
+	for i := range vehicules {
+		vehicules[i] = createRandomVehicule()
+	}
 
-	v := Vehicule{Position: Position{y: 20}}
 	drive := &Driving{}
-
-	var square *ebiten.Image
-	square, _ = ebiten.NewImage(int(carWidth*uiScale), int(carHeight*uiScale), ebiten.FilterNearest)
-	square.Fill(color.White)
 
 	update := func(screen *ebiten.Image) error {
 		inputControls(drive)
-		v.Drive(drive, 1.0/60)
-
-		opts := &ebiten.DrawImageOptions{}
-		opts.GeoM.Translate(carWidth*uiScale/-4, carHeight*uiScale/-2)
-		opts.GeoM.Rotate(v.Rotation * -1)
-		opts.GeoM.Translate(carWidth*uiScale/4, carHeight*uiScale/2)
-		opts.GeoM.Translate(v.x*uiScale, v.y*uiScale*-1+uiHeight)
 		screen.Fill(color.NRGBA{0x88, 0x00, 0x00, 0xff})
-		screen.DrawImage(square, opts)
+
+		for _, v := range vehicules {
+			v.Drive(drive, 1.0/60)
+			opts := ebiten.DrawImageOptions{}
+			opts.GeoM.Translate(carWidth*uiScale/-4, carHeight*uiScale/-2)
+			opts.GeoM.Rotate(v.Rotation * -1)
+			opts.GeoM.Translate(carWidth*uiScale/4, carHeight*uiScale/2)
+			opts.GeoM.Translate(v.x*uiScale, v.y*uiScale*-1+uiHeight)
+			vehiculeImage.Fill(color.White)
+			screen.DrawImage(vehiculeImage, &opts)
+		}
+
 		ebitenutil.DebugPrint(screen, fmt.Sprintf(
-			"%#v\n%.1f km/h\n%.2f°",
-			drive, v.Velocity/1000*60*60, v.Rotation*180/math.Pi))
+			"%#v\n%.1f km/h\n%.2f°\nfps:%.0f\nvcount: %d",
+			drive, vehicules[0].Velocity/1000*60*60, vehicules[0].Rotation*180/math.Pi, ebiten.CurrentFPS(), len(vehicules)))
 		return nil
 	}
+
+	go func() {
+		for {
+			time.Sleep(time.Millisecond * 300)
+			if ebiten.CurrentFPS() > 58 {
+				v := createRandomVehicule()
+				v.Velocity = vehicules[0].Velocity
+				vehicules = append(vehicules, v)
+			}
+			if ebiten.CurrentFPS() < 55 {
+				vehicules = vehicules[1:]
+			}
+		}
+	}()
 
 	if err := ebiten.Run(update, uiWidth, uiHeight, 2, "Hello world!"); err != nil {
 		panic(err)
