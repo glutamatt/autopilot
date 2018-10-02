@@ -15,9 +15,9 @@ const minTurningRadius = 12
 const turnInc = .02
 const carWidth = 5
 const carHeight = 2
-const uiScale = 3.0
-const uiWidth = 500
-const uiHeight = 500
+const uiScale = 2
+const groundWidth = 600
+const groundHeight = 300
 
 //Position for Items
 type Position struct {
@@ -35,6 +35,22 @@ type Vehicule struct {
 	Position
 	Rotation float64
 	Velocity float64
+}
+
+var vehiculeRadiusSqrt float64
+
+//Collide a vehicule with an other
+func (v *Vehicule) Collide(other *Vehicule) bool {
+	if vehiculeRadiusSqrt == 0 {
+		vehiculeRadiusSqrt = carWidth*carWidth/4 + carHeight*carHeight/4
+	}
+
+	//Car as a circle
+	if math.Abs(v.x-other.x)+math.Abs(v.y-other.y) > vehiculeRadiusSqrt {
+		return false
+	}
+
+	return true
 }
 
 //Drive a vehicule
@@ -84,8 +100,8 @@ func debug(v ...interface{}) {
 func createRandomVehicule() *Vehicule {
 	return &Vehicule{
 		Position: Position{
-			x: rand.Float64() * uiHeight,
-			y: rand.Float64() * uiWidth,
+			x: rand.Float64()*groundWidth/2 + groundWidth/4,
+			y: rand.Float64()*groundHeight/-2 - groundHeight/4,
 		},
 		Rotation: rand.Float64() * math.Pi * 2,
 	}
@@ -94,7 +110,7 @@ func createRandomVehicule() *Vehicule {
 func main() {
 	vehicules := make([]*Vehicule, 500)
 	vehiculeImage, _ := ebiten.NewImage(int(carWidth*uiScale), int(carHeight*uiScale), ebiten.FilterNearest)
-	vehiculeImage.Fill(color.White)
+	vehiculeImage.Fill(color.NRGBA{0xFF, 0xFF, 0xFF, 0xff})
 	for i := range vehicules {
 		vehicules[i] = createRandomVehicule()
 	}
@@ -103,23 +119,45 @@ func main() {
 
 	update := func(screen *ebiten.Image) error {
 		inputControls(drive)
-		screen.Fill(color.NRGBA{0x88, 0x00, 0x00, 0xff})
+		screen.Fill(color.NRGBA{0x00, 0x00, 0x88, 0xff})
+
+		/*STEPS
+		1.move
+		2.collide
+		3. render
+		*/
 
 		wg := sync.WaitGroup{}
 		wg.Add(len(vehicules))
 		optsChan := make(chan ebiten.DrawImageOptions)
 
 		for _, v := range vehicules {
-			go func(v *Vehicule) {
-				v.Drive(drive, 1.0/60)
+			v.Drive(drive, 1.0/60)
+		}
+
+		collisions := make(map[int]struct{})
+		for i1, v1 := range vehicules {
+			for i2, v2 := range vehicules[i1+1:] {
+				if v1.Collide(v2) {
+					collisions[i1] = struct{}{}
+					collisions[i2+i1+1] = struct{}{}
+				}
+			}
+		}
+
+		for i, v := range vehicules {
+			go func(v *Vehicule, i int) {
 				opts := ebiten.DrawImageOptions{}
 				opts.GeoM.Translate(carWidth*uiScale/-4, carHeight*uiScale/-2)
 				opts.GeoM.Rotate(v.Rotation * -1)
 				opts.GeoM.Translate(carWidth*uiScale/4, carHeight*uiScale/2)
-				opts.GeoM.Translate(v.x*uiScale, v.y*uiScale*-1+uiHeight)
+				opts.GeoM.Translate(v.x*uiScale, v.y*uiScale*-1)
+				if _, collision := collisions[i]; collision {
+					opts.ColorM.Translate(1, -1, -1, 0)
+				}
 				optsChan <- opts
 				wg.Done()
-			}(v)
+			}(v, i)
 		}
 
 		go func() {
@@ -132,12 +170,12 @@ func main() {
 		close(optsChan)
 
 		ebitenutil.DebugPrint(screen, fmt.Sprintf(
-			"%#v\n%.1f km/h\n%.2f°\nfps:%.0f\nvcount: %d",
-			drive, vehicules[0].Velocity/1000*60*60, vehicules[0].Rotation*180/math.Pi, ebiten.CurrentFPS(), len(vehicules)))
+			"pos: %.0f:%.0f\n%#v\n%.1f km/h\n%.2f°\nfps:%.0f\nvcount: %d",
+			vehicules[0].x, vehicules[0].y, drive, vehicules[0].Velocity/1000*60*60, vehicules[0].Rotation*180/math.Pi, ebiten.CurrentFPS(), len(vehicules)))
 		return nil
 	}
 
-	if err := ebiten.Run(update, uiWidth, uiHeight, 2, "Hello world!"); err != nil {
+	if err := ebiten.Run(update, groundWidth*uiScale, groundHeight*uiScale, 2, "Drive my crazy!"); err != nil {
 		panic(err)
 	}
 }
