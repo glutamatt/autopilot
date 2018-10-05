@@ -35,13 +35,14 @@ func createRandomVehicule() *geom.Vehicule {
 
 func main() {
 
-	vehicules := make([]*geom.Vehicule, 300)
+	vehicules := make([]*geom.Vehicule, 1)
 
 	geom.SetMinTurningRadius(minTurningRadius)
 	graphics.SetTurnInc(turnInc)
 	graphics.SetCarDimension(carWidth, carHeight)
 	graphics.UiScale = uiScale
 	graphics.BlockBorder = blockBorder
+	geom.InitPathTiles(blockBorder, groundWidth, groundHeight)
 	graphics.InitBlockImage()
 	geom.InitBlockCar(blockBorder)
 	geom.InitRadiusCar(carWidth, carHeight)
@@ -64,6 +65,11 @@ func main() {
 		wg.Add(len(vehicules))
 		optsChan := make(chan ebiten.DrawImageOptions)
 		screen.DrawImage(blocksImage, nil)
+
+		found, path := geom.FindPath(vehicules[0].Position, geom.Position{}, &blocks)
+		if found {
+			graphics.DrawPath(screen, path...)
+		}
 
 		for _, v := range vehicules {
 			v.Drive(drive, 1.0/60)
@@ -97,6 +103,7 @@ func main() {
 		ebitenutil.DebugPrint(screen, fmt.Sprintf(
 			"pos: %.1f:%.1f\n%#v\n%.1f km/h\n%.2f°\nfps:%.0f\nvcount: %d",
 			vehicules[0].X, vehicules[0].Y, drive, vehicules[0].Velocity/1000*60*60, vehicules[0].Rotation*180/math.Pi, ebiten.CurrentFPS(), len(vehicules)))
+
 		return nil
 	}
 

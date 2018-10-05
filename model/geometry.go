@@ -7,6 +7,11 @@ type Position struct {
 	X, Y float64
 }
 
+func (p *Position) Gap(dist int) {
+	p.X = float64(int(p.X) - int(p.X)%dist)
+	p.Y = float64(int(p.Y) - int(p.Y)%dist)
+}
+
 //Driving instruction
 type Driving struct {
 	Turning float64

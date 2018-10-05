@@ -85,13 +85,24 @@ func HandleBlockAdd(blocksImage *ebiten.Image) *model.Position {
 	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 		x, y := ebiten.CursorPosition()
 		x, y = x/UiScale, y/-UiScale
-		pos := model.Position{X: float64(x - x%BlockBorder), Y: float64(y - y%BlockBorder)}
+		pos := &model.Position{X: float64(x), Y: float64(y)}
+		pos.Gap(BlockBorder)
 		opts := ebiten.DrawImageOptions{}
 		opts.GeoM.Translate(float64(BlockBorder*UiScale)/-2, float64(BlockBorder*UiScale)/-2)
 		opts.GeoM.Translate(pos.X*float64(UiScale), pos.Y*float64(UiScale)*-1)
 		blocksImage.DrawImage(blockImage, &opts)
-		return &pos
+		return pos
 	}
 
 	return nil
+}
+
+func DrawPath(img *ebiten.Image, positions ...model.Position) {
+	for _, pos := range positions {
+		opts := ebiten.DrawImageOptions{}
+		opts.GeoM.Translate(float64(BlockBorder*UiScale)/-2, float64(BlockBorder*UiScale)/-2)
+		opts.GeoM.Translate(pos.X*float64(UiScale), pos.Y*float64(UiScale)*-1)
+		opts.ColorM.Scale(1.5, 1.5, 1.5, .1)
+		img.DrawImage(blockImage, &opts)
+	}
 }
