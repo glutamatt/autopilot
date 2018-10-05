@@ -14,6 +14,7 @@ import (
 const minTurningRadius = 12
 const turnInc = .02
 const carWidth = 5
+const blockBorder = 5
 const carHeight = 2
 const uiScale = 2
 const groundWidth = 600
@@ -98,8 +99,8 @@ func createRandomVehicule() *Vehicule {
 
 func main() {
 	//rand.Seed(time.Now().Unix())
-	vehicules := make([]*Vehicule, 100)
-	blocks := []*Position{}
+	vehicules := make([]*Vehicule, 3)
+	blocks := make(map[Position]bool)
 	vehiculeImage, _ := ebiten.NewImage(int(carWidth*uiScale), int(carHeight*uiScale), ebiten.FilterNearest)
 	blockImage, _ := ebiten.NewImage(int(carWidth*uiScale), int(carWidth*uiScale), ebiten.FilterNearest)
 	blockImage.Fill(color.NRGBA{0xBB, 0xBB, 0xBB, 0xff})
@@ -108,6 +109,7 @@ func main() {
 		vehicules[i] = createRandomVehicule()
 	}
 	vehiculeVehiculeRadiusSqrt := float64(carWidth*carWidth)/4.0 + float64(carHeight*carHeight)/4.0
+	blockVehiculeRadiusSqrt := float64(carWidth*carWidth)/4.0 + float64(carHeight*carHeight)/4.0
 
 	drive := &Driving{}
 
@@ -125,7 +127,7 @@ func main() {
 		wg.Add(len(vehicules))
 		optsChan := make(chan ebiten.DrawImageOptions)
 
-		for _, b := range blocks {
+		for b := range blocks {
 			opts := ebiten.DrawImageOptions{}
 			opts.GeoM.Translate(carWidth*uiScale/-2, carWidth*uiScale/-2)
 			opts.GeoM.Translate(b.x*uiScale, b.y*uiScale*-1)
@@ -139,19 +141,16 @@ func main() {
 		collisions := make(map[int]struct{})
 
 		for i1, v1 := range vehicules {
-			for _, b := range blocks {
-				//println("check", v1.Position.x)
-				if v1.Collide(b, vehiculeVehiculeRadiusSqrt) {
+
+			for b := range blocks {
+				if v1.Collide(&b, blockVehiculeRadiusSqrt) {
 					collisions[i1] = struct{}{}
-					v1.Velocity = 0
 				}
 			}
 			for i2, v2 := range vehicules[i1+1:] {
 				if v1.Collide(&v2.Position, vehiculeVehiculeRadiusSqrt) {
 					collisions[i1] = struct{}{}
 					collisions[i2+i1+1] = struct{}{}
-					v1.Velocity = 0
-					v2.Velocity = 0
 				}
 			}
 		}
@@ -182,8 +181,9 @@ func main() {
 		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 			x, y := ebiten.CursorPosition()
 			x, y = x/uiScale, y/-uiScale
+			x, y = x-x%blockBorder, y-y%blockBorder
 			ebitenutil.DebugPrintAt(screen, fmt.Sprintf("click at %d:%d", x, y), 0, groundHeight*uiScale-20)
-			blocks = append(blocks, &Position{float64(x), float64(y)})
+			blocks[Position{float64(x), float64(y)}] = true
 		}
 
 		ebitenutil.DebugPrint(screen, fmt.Sprintf(
