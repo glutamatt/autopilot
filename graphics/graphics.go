@@ -64,7 +64,7 @@ func InputControls(drive *model.Driving) {
 	}
 }
 
-func VehiculeImage(v *model.Vehicule, collision bool) (opts ebiten.DrawImageOptions) {
+func VehiculeImageOptions(v *model.Vehicule, collision bool) (opts ebiten.DrawImageOptions) {
 	opts.GeoM.Translate(CarWidth*float64(UiScale)/-2.0, CarHeight*float64(UiScale)/-2.0)
 	opts.GeoM.Rotate(v.Rotation * -1)
 	opts.GeoM.Translate(v.X*float64(UiScale), v.Y*float64(UiScale)*-1)

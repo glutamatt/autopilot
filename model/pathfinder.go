@@ -29,16 +29,36 @@ func InitPathTiles(blockBorder, w, h int) {
 
 func (t *Tile) PathNeighbors() []astar.Pather {
 	paths := []astar.Pather{}
+	//up
 	if p, ok := mapTiles[Position{X: t.Position.X, Y: t.Position.Y + float64(BlockBorder)}]; ok {
 		paths = append(paths, p)
 	}
+	//down
 	if p, ok := mapTiles[Position{X: t.Position.X, Y: t.Position.Y - float64(BlockBorder)}]; ok {
 		paths = append(paths, p)
 	}
+	//left
 	if p, ok := mapTiles[Position{X: t.Position.X + float64(BlockBorder), Y: t.Position.Y}]; ok {
 		paths = append(paths, p)
 	}
+	//right
 	if p, ok := mapTiles[Position{X: t.Position.X - float64(BlockBorder), Y: t.Position.Y}]; ok {
+		paths = append(paths, p)
+	}
+	//up right
+	if p, ok := mapTiles[Position{X: t.Position.X + float64(BlockBorder), Y: t.Position.Y + float64(BlockBorder)}]; ok {
+		paths = append(paths, p)
+	}
+	//up left
+	if p, ok := mapTiles[Position{X: t.Position.X - float64(BlockBorder), Y: t.Position.Y - float64(BlockBorder)}]; ok {
+		paths = append(paths, p)
+	}
+	//down right
+	if p, ok := mapTiles[Position{X: t.Position.X - float64(BlockBorder), Y: t.Position.Y + float64(BlockBorder)}]; ok {
+		paths = append(paths, p)
+	}
+	//down left
+	if p, ok := mapTiles[Position{X: t.Position.X - float64(BlockBorder), Y: t.Position.Y - float64(BlockBorder)}]; ok {
 		paths = append(paths, p)
 	}
 
@@ -50,11 +70,22 @@ func (t *Tile) PathNeighborCost(to astar.Pather) float64 {
 	if !toto || toT == nil {
 		return math.Inf(1)
 	}
-	//fmt.Printf("PathNeighborCost > blockMap: %v\n", blockMap)
-	//fmt.Printf("PathNeighborCost > toT: %v\n", toT)
 	if _, exist := (*blockMap)[toT.Position]; exist {
 		return math.Inf(1)
 	}
+
+	{
+		_, diag1 := (*blockMap)[Position{X: t.X, Y: toT.Y}]
+		_, diag2 := (*blockMap)[Position{X: toT.X, Y: t.Y}]
+		if diag1 && diag2 {
+			return math.Inf(1)
+		}
+	}
+
+	if t.X != toT.X && t.Y != toT.Y {
+		return 1.4
+	}
+
 	return 1
 }
 

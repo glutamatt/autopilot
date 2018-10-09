@@ -35,7 +35,7 @@ func createRandomVehicule() *geom.Vehicule {
 
 func main() {
 
-	vehicules := make([]*geom.Vehicule, 1)
+	vehicules := make([]*geom.Vehicule, 10)
 
 	geom.SetMinTurningRadius(minTurningRadius)
 	graphics.SetTurnInc(turnInc)
@@ -80,7 +80,7 @@ func main() {
 		for i, v := range vehicules {
 			go func(v *geom.Vehicule, i int) {
 				_, collision := collisions[i]
-				optsChan <- graphics.VehiculeImage(v, collision)
+				optsChan <- graphics.VehiculeImageOptions(v, collision)
 				wg.Done()
 			}(v, i)
 		}
