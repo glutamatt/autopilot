@@ -102,11 +102,19 @@ func FindPath(from, to Position, blocks *map[Position]bool) (bool, []Position) {
 
 	start := &from
 	start.Gap(BlockBorder)
-	startTile := mapTiles[*start]
+	startTile, ok := mapTiles[*start]
+
+	if !ok {
+		return false, nil
+	}
 
 	end := &to
 	end.Gap(BlockBorder)
-	endTile := mapTiles[*end]
+	endTile, ok := mapTiles[*end]
+
+	if !ok {
+		return false, nil
+	}
 
 	path, _, found := astar.Path(startTile, endTile)
 	if !found {

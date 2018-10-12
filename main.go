@@ -66,7 +66,7 @@ func main() {
 		optsChan := make(chan ebiten.DrawImageOptions)
 		screen.DrawImage(blocksImage, nil)
 
-		found, path := geom.FindPath(vehicules[0].Position, geom.Position{}, &blocks)
+		found, path := geom.FindPath(vehicules[0].Position, geom.Position{X: groundWidth / 2, Y: groundHeight / -2}, &blocks)
 		if found {
 			graphics.DrawPath(screen, path...)
 		}
