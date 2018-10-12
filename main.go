@@ -7,6 +7,8 @@ import (
 	"math/rand"
 	"sync"
 
+	"github.com/glutamatt/autopilot/ia"
+
 	"github.com/glutamatt/autopilot/graphics"
 	geom "github.com/glutamatt/autopilot/model"
 
@@ -35,7 +37,7 @@ func createRandomVehicule() *geom.Vehicule {
 
 func main() {
 
-	vehicules := make([]*geom.Vehicule, 10)
+	vehicules := make([]*geom.Vehicule, 1)
 
 	geom.SetMinTurningRadius(minTurningRadius)
 	graphics.SetTurnInc(turnInc)
@@ -72,8 +74,12 @@ func main() {
 			graphics.DrawPath(screen, path...)
 		}
 
-		for _, v := range vehicules {
-			v.Drive(drive, 1.0/60)
+		for i, v := range vehicules {
+			if i == 0 && found {
+				v.Drive(&geom.Driving{Turning: ia.Basic(v, &path).Turning, Thrust: drive.Thrust}, 1.0/60)
+			} else {
+				v.Drive(drive, 1.0/60)
+			}
 		}
 
 		collisions := geom.Collisions(vehicules, blocks)
