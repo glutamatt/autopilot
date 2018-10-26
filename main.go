@@ -22,8 +22,8 @@ const carWidth = 5
 const blockBorder = 10
 const carHeight = 2
 const uiScale = 2
-const groundWidth = 600
-const groundHeight = 300
+const groundWidth = 300
+const groundHeight = 150
 
 func createRandomVehicule() *geom.Vehicule {
 	return &geom.Vehicule{

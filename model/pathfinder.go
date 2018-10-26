@@ -127,5 +127,9 @@ func FindPath(from, to Position, blocks *map[Position]bool) (bool, []Position) {
 		pathPositions[i] = p.Position
 	}
 
-	return true, pathPositions
+	pathPositions = pathPositions[:len(pathPositions)-2]
+	if len(pathPositions) > 0 {
+		return true, pathPositions
+	}
+	return false, nil
 }

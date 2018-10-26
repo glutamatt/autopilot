@@ -8,8 +8,8 @@ type Position struct {
 }
 
 func (p *Position) Gap(dist int) {
-	p.X = float64(int(p.X) - int(p.X)%dist)
-	p.Y = float64(int(p.Y) - int(p.Y)%dist)
+	p.X = math.Round(p.X/float64(dist)) * float64(dist)
+	p.Y = math.Round(p.Y/float64(dist)) * float64(dist)
 }
 
 //Driving instruction
