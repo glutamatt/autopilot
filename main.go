@@ -75,9 +75,12 @@ func main() {
 		}
 
 		for i, v := range vehicules {
-			if i == 0 && found {
-				v.Drive(&geom.Driving{Turning: ia.Basic(v, &path).Turning, Thrust: drive.Thrust}, 1.0/60)
+			if i == 0 && found && drive.Turning == 0 {
+				d := &geom.Driving{Turning: ia.Basic(v, path).Turning, Thrust: drive.Thrust}
+				v.Drive(d, 1.0/60)
+				graphics.SetWheelRotation(d.Turning, screen)
 			} else {
+				graphics.SetWheelRotation(drive.Turning, screen)
 				v.Drive(drive, 1.0/60)
 			}
 		}
@@ -106,8 +109,6 @@ func main() {
 				blocks[*block] = true
 			}
 		}
-
-		graphics.SetWheelRotation(drive.Turning, screen)
 
 		ebitenutil.DebugPrint(screen, fmt.Sprintf(
 			"pos: %.1f:%.1f\n%#v\n%.1f km/h\n%.2f°\nfps:%.0f\nvcount: %d",

@@ -121,15 +121,15 @@ func FindPath(from, to Position, blocks *map[Position]bool) (bool, []Position) {
 		return false, nil
 	}
 
-	pathPositions := make([]Position, len(path))
-	for i, p := range path {
+	if len(path) < 2 {
+		return false, nil
+	}
+
+	pathPositions := make([]Position, len(path)-1)
+	for i, p := range path[:len(path)-1] {
 		p := p.(*Tile)
 		pathPositions[i] = p.Position
 	}
 
-	pathPositions = pathPositions[:len(pathPositions)-2]
-	if len(pathPositions) > 0 {
-		return true, pathPositions
-	}
-	return false, nil
+	return true, pathPositions
 }
