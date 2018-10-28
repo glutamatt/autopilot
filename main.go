@@ -42,6 +42,7 @@ func main() {
 	graphics.SetCarDimension(carWidth, carHeight)
 	graphics.UiScale = uiScale
 	graphics.BlockBorder = blockBorder
+	graphics.PepareWheel()
 	geom.InitPathTiles(blockBorder, groundWidth, groundHeight)
 	graphics.InitBlockImage()
 	geom.InitBlockCar(blockBorder)
@@ -99,6 +100,8 @@ func main() {
 				blocks[*block] = true
 			}
 		}
+
+		graphics.SetWheelRotation(drive.Turning, screen)
 
 		ebitenutil.DebugPrint(screen, fmt.Sprintf(
 			"pos: %.1f:%.1f\n%#v\n%.1f km/h\n%.2f°\nfps:%.0f\nvcount: %d",

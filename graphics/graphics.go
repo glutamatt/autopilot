@@ -1,7 +1,11 @@
 package graphics
 
 import (
+	"bytes"
+	"fmt"
+	"image"
 	"image/color"
+	"io/ioutil"
 	"math"
 
 	"github.com/glutamatt/autopilot/model"
@@ -105,4 +109,29 @@ func DrawPath(img *ebiten.Image, positions ...model.Position) {
 		opts.ColorM.Scale(1.5, 1.5, 1.5, .1)
 		img.DrawImage(blockImage, &opts)
 	}
+}
+
+var wheel *ebiten.Image
+
+func PepareWheel() {
+	wheekBytes, err := ioutil.ReadFile("wheel.png")
+	if err != nil {
+		panic(fmt.Errorf("Unable to Read file wheel.png : %v", err))
+	}
+	img, _, err := image.Decode(bytes.NewReader(wheekBytes))
+	if err != nil {
+		panic(fmt.Errorf("Unable to decode image wheek bytes : %v", err))
+	}
+	wheel, err = ebiten.NewImageFromImage(img, ebiten.FilterDefault)
+	if err != nil {
+		panic(fmt.Errorf("Unable to create wheel image from image : %v", err))
+	}
+}
+
+func SetWheelRotation(turning float64, screen *ebiten.Image) {
+	wheelOpt := &ebiten.DrawImageOptions{}
+	wheelOpt.GeoM.Translate(-50, -50)
+	wheelOpt.GeoM.Rotate(-turning * (math.Pi / 2))
+	wheelOpt.GeoM.Translate(50, 150)
+	screen.DrawImage(wheel, wheelOpt)
 }
