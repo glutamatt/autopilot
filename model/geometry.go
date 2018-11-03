@@ -49,8 +49,14 @@ func (v *Vehicule) Collide(other *Position, dist float64) bool {
 	return math.Sqrt(xdist*xdist+ydist*ydist) <= dist
 }
 
+var adherenceMaxDotgravity float64
+
+func SetAdherenceMax(adherenceMax float64) {
+	adherenceMaxDotgravity = adherenceMax * 9.81
+}
+
 //Drive a vehicule
-func (v *Vehicule) Drive(driving *Driving, seconds float64) {
+func (v *Vehicule) Drive(driving *Driving, seconds float64) (wheelTurn float64) {
 	v.Velocity += driving.Thrust * seconds
 	if v.Velocity == 0 {
 		return
@@ -63,7 +69,11 @@ func (v *Vehicule) Drive(driving *Driving, seconds float64) {
 		}
 		return
 	}
-	turningRadius := minTurningRadius / driving.Turning
+
+	minRadiusRelVel := math.Max(minTurningRadius, v.Velocity*v.Velocity/(adherenceMaxDotgravity))
+	wheelTurn = driving.Turning * minTurningRadius / minRadiusRelVel
+
+	turningRadius := minRadiusRelVel / driving.Turning
 	turningAngle := instantDist / turningRadius
 	v.Rotation = math.Mod(v.Rotation+turningAngle, 2*math.Pi)
 
@@ -84,6 +94,8 @@ func (v *Vehicule) Drive(driving *Driving, seconds float64) {
 		X: vehiculePosFromRotatePoint.X*c - vehiculePosFromRotatePoint.Y*s + rotateCenterFromV.X + v.X,
 		Y: vehiculePosFromRotatePoint.X*s + vehiculePosFromRotatePoint.Y*c + rotateCenterFromV.Y + v.Y,
 	}
+
+	return
 }
 
 var vehiculRadius float64
