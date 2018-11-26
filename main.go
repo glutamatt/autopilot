@@ -7,8 +7,6 @@ import (
 	"math/rand"
 	"sync"
 
-	"github.com/glutamatt/autopilot/ia"
-
 	"github.com/glutamatt/autopilot/graphics"
 	geom "github.com/glutamatt/autopilot/model"
 
@@ -16,14 +14,15 @@ import (
 	"github.com/hajimehoshi/ebiten/ebitenutil"
 )
 
-const minTurningRadius = 12
-const turnInc = .02
+const minTurningRadius = 11
+const turnWheelInc = .02
 const carWidth = 5
 const blockBorder = 10
 const carHeight = 2
 const uiScale = 2
 const groundWidth = 300
 const groundHeight = 150
+const adherenceMax = 2.5 // m/s/s newton force
 
 func createRandomVehicule() *geom.Vehicule {
 	return &geom.Vehicule{
@@ -40,7 +39,8 @@ func main() {
 	vehicules := make([]*geom.Vehicule, 1)
 
 	geom.SetMinTurningRadius(minTurningRadius)
-	graphics.SetTurnInc(turnInc)
+	geom.SetAdherenceMax(adherenceMax)
+	graphics.SetTurnInc(turnWheelInc)
 	graphics.SetCarDimension(carWidth, carHeight)
 	graphics.UiScale = uiScale
 	graphics.BlockBorder = blockBorder
@@ -74,16 +74,8 @@ func main() {
 			graphics.DrawPath(screen, path...)
 		}
 
-		for i, v := range vehicules {
-			if i == 0 && found && drive.Turning == 0 {
-				d := &geom.Driving{Turning: ia.Basic(v, path).Turning, Thrust: drive.Thrust}
-				v.Drive(d, 1.0/60)
-				graphics.SetWheelRotation(d.Turning, screen)
-			} else {
-				graphics.SetWheelRotation(drive.Turning, screen)
-				v.Drive(drive, 1.0/60)
-			}
-		}
+		wheelTurn := vehicules[0].Drive(drive, 1.0/60)
+		graphics.SetWheelRotation(wheelTurn, screen)
 
 		collisions := geom.Collisions(vehicules, blocks)
 
