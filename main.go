@@ -17,11 +17,11 @@ import (
 const minTurningRadius = 11
 const turnWheelInc = .02
 const carWidth = 5
-const blockBorder = 5
+const blockBorder = 3
 const carHeight = 2
 const uiScale = 2
-const groundWidth = 300
-const groundHeight = 150
+const groundWidth = 500
+const groundHeight = 300
 const adherenceMax = 2.5 // m/s/s newton force
 
 func createRandomVehicule() *geom.Vehicule {
