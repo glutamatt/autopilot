@@ -11,7 +11,7 @@ type Tile struct {
 }
 
 var blockMap *map[Position]bool
-var BlockBorder = 5
+var BlockBorder int
 
 var mapTiles map[Position]*Tile
 

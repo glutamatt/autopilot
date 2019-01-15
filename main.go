@@ -17,7 +17,7 @@ import (
 const minTurningRadius = 11
 const turnWheelInc = .02
 const carWidth = 5
-const blockBorder = 10
+const blockBorder = 5
 const carHeight = 2
 const uiScale = 2
 const groundWidth = 300
@@ -51,8 +51,15 @@ func main() {
 	geom.InitRadiusCar(carWidth, carHeight)
 
 	blocks := make(map[geom.Position]bool)
+
 	vehiculeImage, _ := ebiten.NewImage(int(carWidth*uiScale), int(carHeight*uiScale), ebiten.FilterNearest)
 	blocksImage, _ := ebiten.NewImage(groundWidth*uiScale, groundHeight*uiScale, ebiten.FilterNearest)
+
+	for _, p := range geom.GenerateBlocks(groundWidth, groundHeight) {
+		blocks[*p] = true
+		graphics.DrawBlock(p, blocksImage)
+	}
+
 	vehiculeImage.Fill(color.NRGBA{0xFF, 0xFF, 0xFF, 0xff})
 	for i := range vehicules {
 		vehicules[i] = createRandomVehicule()

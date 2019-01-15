@@ -91,14 +91,18 @@ func HandleBlockAdd(blocksImage *ebiten.Image) *model.Position {
 		x, y = x/UiScale, y/-UiScale
 		pos := &model.Position{X: float64(x), Y: float64(y)}
 		pos.Gap(BlockBorder)
-		opts := ebiten.DrawImageOptions{}
-		opts.GeoM.Translate(float64(BlockBorder*UiScale)/-2, float64(BlockBorder*UiScale)/-2)
-		opts.GeoM.Translate(pos.X*float64(UiScale), pos.Y*float64(UiScale)*-1)
-		blocksImage.DrawImage(blockImage, &opts)
+		DrawBlock(pos, blocksImage)
 		return pos
 	}
 
 	return nil
+}
+
+func DrawBlock(pos *model.Position, blocksImage *ebiten.Image) {
+	opts := ebiten.DrawImageOptions{}
+	opts.GeoM.Translate(float64(BlockBorder*UiScale)/-2, float64(BlockBorder*UiScale)/-2)
+	opts.GeoM.Translate(pos.X*float64(UiScale), pos.Y*float64(UiScale)*-1)
+	blocksImage.DrawImage(blockImage, &opts)
 }
 
 func DrawPath(img *ebiten.Image, positions ...model.Position) {
