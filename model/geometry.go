@@ -12,6 +12,10 @@ func (p *Position) Gap(dist int) {
 	p.Y = math.Round(p.Y/float64(dist)) * float64(dist)
 }
 
+func (p Position) ManDist(to Position) float64 {
+	return math.Abs(p.X-to.X) + math.Abs(p.Y-to.Y)
+}
+
 //Driving instruction
 type Driving struct {
 	Turning float64
@@ -58,7 +62,8 @@ func SetAdherenceMax(adherenceMax float64) {
 //Drive a vehicule
 func (v *Vehicule) Drive(driving *Driving, seconds float64) (wheelTurn float64) {
 	v.Velocity += driving.Thrust * seconds
-	if v.Velocity == 0 {
+	if v.Velocity <= 0 {
+		v.Velocity = 0
 		return
 	}
 	instantDist := v.Velocity * seconds
@@ -101,12 +106,14 @@ func (v *Vehicule) Drive(driving *Driving, seconds float64) (wheelTurn float64) 
 var vehiculRadius float64
 var blocRadius float64
 
-func InitRadiusCar(carWidth, carHeight int) {
+func InitRadiusCar(carWidth, carHeight int) float64 {
 	vehiculRadius = math.Sqrt(float64(carWidth*carWidth)/4.0 + float64(carHeight*carHeight)/4.0)
+	return vehiculRadius
 }
 
-func InitBlockCar(blockBorder int) {
+func InitRadiusBlock(blockBorder int) float64 {
 	blocRadius = math.Sqrt(float64(blockBorder*blockBorder) / 2)
+	return blocRadius
 }
 
 func Collisions(vehicules []*Vehicule, blocks map[Position]bool) map[int]struct{} {

@@ -50,8 +50,8 @@ func main() {
 	graphics.PepareWheel()
 	geom.InitPathTiles(blockBorder, groundWidth, groundHeight)
 	graphics.InitBlockImage()
-	geom.InitBlockCar(blockBorder)
-	geom.InitRadiusCar(carWidth, carHeight)
+	ia.BlocRadius = geom.InitRadiusBlock(blockBorder)
+	ia.VehiculRadius = geom.InitRadiusCar(carWidth, carHeight)
 
 	blocks := make(map[geom.Position]bool)
 
@@ -86,6 +86,9 @@ func main() {
 			case <-pathTicker:
 				if found, path := geom.FindPath(vehicules[0].Position, geom.Position{X: groundWidth / 2, Y: groundHeight / -2}, &blocks); found {
 					displayPath = path
+					if len(displayPath) > 5 {
+						displayPath = path[len(displayPath)-5:]
+					}
 				}
 			default:
 			}
@@ -95,7 +98,7 @@ func main() {
 		}
 
 		if !graphics.InputControls(drive) {
-			drive = ia.Genetic()
+			drive = ia.Genetic(vehicules[0], displayPath, &blocks)
 		}
 
 		wheelTurn := vehicules[0].Drive(drive, 1.0/60)

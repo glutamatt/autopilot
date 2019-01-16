@@ -16,7 +16,7 @@ var turnInc = .02
 var CarWidth float64
 var CarHeight float64
 var UiScale int
-var BlockBorder = 5
+var BlockBorder int
 
 func SetCarDimension(w, h float64) {
 	CarWidth, CarHeight = w, h
@@ -31,11 +31,11 @@ func SetTurnInc(f float64) {
 func InputControls(drive *model.Driving) (keyPressed bool) {
 	if ebiten.IsKeyPressed(ebiten.KeyDown) {
 		keyPressed = true
-		drive.Thrust = -10
+		drive.Thrust = -11
 	} else {
 		if ebiten.IsKeyPressed(ebiten.KeyUp) {
 			keyPressed = true
-			drive.Thrust = 5
+			drive.Thrust = 2.3
 		} else {
 			drive.Thrust = 0
 		}
