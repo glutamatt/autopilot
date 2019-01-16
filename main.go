@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/glutamatt/autopilot/ia"
+
 	"github.com/glutamatt/autopilot/graphics"
 	geom "github.com/glutamatt/autopilot/model"
 
@@ -72,7 +74,6 @@ func main() {
 	pathTicker := time.Tick(200 * time.Millisecond)
 
 	update := func(screen *ebiten.Image) error {
-		graphics.InputControls(drive)
 		screen.Fill(color.NRGBA{0x00, 0x00, 0x88, 0xff})
 
 		wg := sync.WaitGroup{}
@@ -91,6 +92,10 @@ func main() {
 			if displayPath != nil {
 				graphics.DrawPath(screen, displayPath...)
 			}
+		}
+
+		if !graphics.InputControls(drive) {
+			drive = ia.Genetic()
 		}
 
 		wheelTurn := vehicules[0].Drive(drive, 1.0/60)
@@ -122,8 +127,8 @@ func main() {
 		}
 
 		ebitenutil.DebugPrint(screen, fmt.Sprintf(
-			"pos: %.1f:%.1f\n%#v\n%.1f km/h\n%.2f°\nfps:%.0f\nvcount: %d",
-			vehicules[0].X, vehicules[0].Y, drive, vehicules[0].Velocity/1000*60*60, vehicules[0].Rotation*180/math.Pi, ebiten.CurrentFPS(), len(vehicules)))
+			"pos: %.1f:%.1f\nturn: %.2f\nthrust: %.2f\n%.1f km/h\n%.2f°\nfps:%.0f\nvcount: %d",
+			vehicules[0].X, vehicules[0].Y, drive.Turning, drive.Thrust, vehicules[0].Velocity/1000*60*60, vehicules[0].Rotation*180/math.Pi, ebiten.CurrentFPS(), len(vehicules)))
 
 		return nil
 	}

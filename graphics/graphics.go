@@ -28,11 +28,13 @@ func SetTurnInc(f float64) {
 }
 
 //InputControls to driving
-func InputControls(drive *model.Driving) {
+func InputControls(drive *model.Driving) (keyPressed bool) {
 	if ebiten.IsKeyPressed(ebiten.KeyDown) {
+		keyPressed = true
 		drive.Thrust = -10
 	} else {
 		if ebiten.IsKeyPressed(ebiten.KeyUp) {
+			keyPressed = true
 			drive.Thrust = 5
 		} else {
 			drive.Thrust = 0
@@ -40,6 +42,7 @@ func InputControls(drive *model.Driving) {
 	}
 
 	if ebiten.IsKeyPressed(ebiten.KeyLeft) {
+		keyPressed = true
 		if drive.Turning < 1 {
 			if drive.Turning < 0 {
 				drive.Turning = 0
@@ -48,6 +51,7 @@ func InputControls(drive *model.Driving) {
 		}
 	} else {
 		if ebiten.IsKeyPressed(ebiten.KeyRight) {
+			keyPressed = true
 			if drive.Turning > -1 {
 				if drive.Turning > 0 {
 					drive.Turning = 0
@@ -66,6 +70,8 @@ func InputControls(drive *model.Driving) {
 			}
 		}
 	}
+
+	return keyPressed
 }
 
 func VehiculeImageOptions(v *model.Vehicule, collision bool) (opts ebiten.DrawImageOptions) {
