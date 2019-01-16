@@ -91,13 +91,12 @@ func InitBlockImage() {
 	blockImage.Fill(color.NRGBA{0xBB, 0xBB, 0xBB, 0xff})
 }
 
-func HandleBlockAdd(blocksImage *ebiten.Image) *model.Position {
+func GetMouseClickPos() *model.Position {
 	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 		x, y := ebiten.CursorPosition()
 		x, y = x/UiScale, y/-UiScale
 		pos := &model.Position{X: float64(x), Y: float64(y)}
 		pos.Gap(BlockBorder)
-		DrawBlock(pos, blocksImage)
 		return pos
 	}
 

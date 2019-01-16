@@ -1,29 +1,37 @@
 package ia
 
 import (
+	"math"
 	"math/rand"
 	"time"
 
 	"github.com/glutamatt/autopilot/model"
 )
 
+var driveSequenceLen = 2
+var intervalTime = 500 * time.Millisecond
 var random = rand.New(rand.NewSource(time.Now().UnixNano()))
 var VehiculRadius float64
 var BlocRadius float64
 
-func Genetic(vehicule *model.Vehicule, path []model.Position, blocks *map[model.Position]bool) *model.Driving {
+func Genetic(vehicule *model.Vehicule, path *[]model.Position, blocks *map[model.Position]bool) *model.Driving {
 	var bestSeq *sequence
 	filteredBlocks := filterBlocks(vehicule.Position, blocks)
 	for i := 0; i < 1000; i++ {
 		seq := sequence{
-			drives:   driveSequence(),
-			vehicule: model.Vehicule{Position: vehicule.Position},
+			drives: driveSequence(),
+			vehicule: model.Vehicule{
+				Position: vehicule.Position,
+				Rotation: vehicule.Rotation,
+				Velocity: vehicule.Velocity,
+			},
 		}
-		seq.compute(500*time.Millisecond, filteredBlocks, &path)
-		if bestSeq == nil || bestSeq.score < seq.score {
+		seq.compute(intervalTime, filteredBlocks, path)
+		if bestSeq == nil || bestSeq.cost > seq.cost {
 			bestSeq = &seq
 		}
 	}
+
 	return bestSeq.drives[0]
 }
 
@@ -40,7 +48,7 @@ func filterBlocks(vehicule model.Position, blocks *map[model.Position]bool) *[]m
 type sequence struct {
 	drives   []*model.Driving
 	vehicule model.Vehicule
-	score    float64
+	cost     float64
 }
 
 func (s *sequence) compute(interval time.Duration, blocks *[]model.Position, path *[]model.Position) {
@@ -48,19 +56,18 @@ func (s *sequence) compute(interval time.Duration, blocks *[]model.Position, pat
 		s.vehicule.Drive(d, interval.Seconds())
 		for _, pos := range *blocks {
 			if s.vehicule.Collide(&pos, VehiculRadius+BlocRadius) {
-				s.score = -1
+				s.cost = math.Inf(1)
 				return
 			}
 		}
 	}
-	for i, point := range *path {
-		s.score += 1 / (point.ManDist(s.vehicule.Position) * float64(i+1))
-	}
+
+	s.cost = (*path)[0].ManDist(s.vehicule.Position)
 }
 
 func driveSequence() []*model.Driving {
-	s := make([]*model.Driving, 1)
-	for i := 0; i < 1; i++ {
+	s := make([]*model.Driving, driveSequenceLen)
+	for i := 0; i < driveSequenceLen; i++ {
 		s[i] = gene()
 	}
 	return s

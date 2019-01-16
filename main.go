@@ -70,6 +70,7 @@ func main() {
 
 	drive := &geom.Driving{}
 
+	var firstVehiculeTarget *geom.Position
 	var displayPath []geom.Position
 	pathTicker := time.Tick(200 * time.Millisecond)
 
@@ -81,24 +82,23 @@ func main() {
 		optsChan := make(chan ebiten.DrawImageOptions)
 		screen.DrawImage(blocksImage, nil)
 
-		{
+		if firstVehiculeTarget != nil {
 			select {
 			case <-pathTicker:
-				if found, path := geom.FindPath(vehicules[0].Position, geom.Position{X: groundWidth / 2, Y: groundHeight / -2}, &blocks); found {
+				if found, path := geom.FindPath(vehicules[0].Position, *firstVehiculeTarget, &blocks); found {
 					displayPath = path
-					if len(displayPath) > 5 {
-						displayPath = path[len(displayPath)-5:]
+					if len(displayPath) > 10 {
+						displayPath = path[len(displayPath)-10:]
 					}
 				}
 			default:
 			}
 			if displayPath != nil {
 				graphics.DrawPath(screen, displayPath...)
+				if !graphics.InputControls(drive) {
+					drive = ia.Genetic(vehicules[0], &displayPath, &blocks)
+				}
 			}
-		}
-
-		if !graphics.InputControls(drive) {
-			drive = ia.Genetic(vehicules[0], displayPath, &blocks)
 		}
 
 		wheelTurn := vehicules[0].Drive(drive, 1.0/60)
@@ -124,8 +124,8 @@ func main() {
 		close(optsChan)
 
 		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
-			if block := graphics.HandleBlockAdd(blocksImage); block != nil {
-				blocks[*block] = true
+			if pos := graphics.GetMouseClickPos(); pos != nil {
+				firstVehiculeTarget = pos
 			}
 		}
 
