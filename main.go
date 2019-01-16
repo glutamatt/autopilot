@@ -6,6 +6,7 @@ import (
 	"math"
 	"math/rand"
 	"sync"
+	"time"
 
 	"github.com/glutamatt/autopilot/graphics"
 	geom "github.com/glutamatt/autopilot/model"
@@ -67,6 +68,9 @@ func main() {
 
 	drive := &geom.Driving{}
 
+	var displayPath []geom.Position
+	pathTicker := time.Tick(200 * time.Millisecond)
+
 	update := func(screen *ebiten.Image) error {
 		graphics.InputControls(drive)
 		screen.Fill(color.NRGBA{0x00, 0x00, 0x88, 0xff})
@@ -76,9 +80,17 @@ func main() {
 		optsChan := make(chan ebiten.DrawImageOptions)
 		screen.DrawImage(blocksImage, nil)
 
-		found, path := geom.FindPath(vehicules[0].Position, geom.Position{X: groundWidth / 2, Y: groundHeight / -2}, &blocks)
-		if found {
-			graphics.DrawPath(screen, path...)
+		{
+			select {
+			case <-pathTicker:
+				if found, path := geom.FindPath(vehicules[0].Position, geom.Position{X: groundWidth / 2, Y: groundHeight / -2}, &blocks); found {
+					displayPath = path
+				}
+			default:
+			}
+			if displayPath != nil {
+				graphics.DrawPath(screen, displayPath...)
+			}
 		}
 
 		wheelTurn := vehicules[0].Drive(drive, 1.0/60)
