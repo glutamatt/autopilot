@@ -24,8 +24,7 @@ func Genetic(vehicule *model.Vehicule, path *[]model.Position, blocks *map[model
 	sort.Slice(sequences, func(i, j int) bool { return sequences[i].cost < sequences[j].cost })
 
 	timer := time.NewTimer(time.Second/60 - 10*time.Millisecond)
-	keepComputing := true
-	for keepComputing {
+	for {
 		sequences = sequences[:10]
 		sequences = append(sequences, crossOver(10, &sequences, vehicule)...)
 		sequences = append(sequences, mutateSequences(5, &sequences, vehicule)...)
@@ -34,12 +33,10 @@ func Genetic(vehicule *model.Vehicule, path *[]model.Position, blocks *map[model
 
 		select {
 		case <-timer.C:
-			keepComputing = false
+			return sequences[0].drives[0]
 		default:
 		}
 	}
-
-	return sequences[0].drives[0]
 }
 
 func mutateSequences(crossedLen int, sequences *[]*sequence, vehicule *model.Vehicule) []*sequence {
