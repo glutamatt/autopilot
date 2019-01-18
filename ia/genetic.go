@@ -13,6 +13,7 @@ import (
 var driveSequenceLen = 4
 var intervalTime = 500 * time.Millisecond
 var random = rand.New(rand.NewSource(time.Now().UnixNano()))
+var distanceToLook = 50.0
 var VehiculRadius float64
 var BlocRadius float64
 
@@ -94,7 +95,7 @@ func computeSequences(sequences *[]*sequence, filteredBlocks *[]model.Position, 
 func filterBlocks(vehicule model.Position, blocks *map[model.Position]bool) *[]model.Position {
 	b := []model.Position{}
 	for p := range *blocks {
-		if p.ManDist(vehicule) < 100 {
+		if p.ManDist(vehicule) < distanceToLook {
 			b = append(b, p)
 		}
 	}
