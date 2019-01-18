@@ -87,8 +87,8 @@ func main() {
 			case <-pathTicker:
 				if found, path := geom.FindPath(vehicules[0].Position, *firstVehiculeTarget, &blocks); found {
 					displayPath = path
-					if len(displayPath) > 15 {
-						displayPath = path[len(displayPath)-15:]
+					if len(displayPath) > 10 {
+						displayPath = path[len(displayPath)-10:]
 					}
 				}
 			default:
