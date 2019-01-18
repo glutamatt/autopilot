@@ -10,7 +10,7 @@ import (
 	"github.com/glutamatt/autopilot/model"
 )
 
-var driveSequenceLen = 5
+var driveSequenceLen = 4
 var intervalTime = 500 * time.Millisecond
 var random = rand.New(rand.NewSource(time.Now().UnixNano()))
 var VehiculRadius float64
@@ -19,22 +19,23 @@ var BlocRadius float64
 func Genetic(vehicule *model.Vehicule, path *[]model.Position, blocks *map[model.Position]bool) *model.Driving {
 	filteredBlocks := filterBlocks(vehicule.Position, blocks)
 
-	sequences := generateSequences(1000, vehicule)
+	sequences := generateSequences(100, vehicule)
 	computeSequences(&sequences, filteredBlocks, path)
 	sort.Slice(sequences, func(i, j int) bool { return sequences[i].cost < sequences[j].cost })
 
 	timer := time.NewTimer(time.Second/60 - 10*time.Millisecond)
 	for {
-		sequences = sequences[:10]
-		sequences = append(sequences, crossOver(10, &sequences, vehicule)...)
-		sequences = append(sequences, mutateSequences(5, &sequences, vehicule)...)
-		computeSequences(&sequences, filteredBlocks, path)
-		sort.Slice(sequences, func(i, j int) bool { return sequences[i].cost < sequences[j].cost })
-
+		newSequences := []*sequence{}
+		newSequences = append(newSequences, crossOver(10, &sequences, vehicule)...)
+		newSequences = append(newSequences, mutateSequences(5, &sequences, vehicule)...)
+		newSequences = append(newSequences, generateSequences(10, vehicule)...)
+		computeSequences(&newSequences, filteredBlocks, path)
+		sort.Slice(newSequences, func(i, j int) bool { return newSequences[i].cost < newSequences[j].cost })
 		select {
 		case <-timer.C:
-			return sequences[0].drives[0]
+			return newSequences[0].drives[0]
 		default:
+			sequences = newSequences
 		}
 	}
 }

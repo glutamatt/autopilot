@@ -72,7 +72,7 @@ func main() {
 
 	var firstVehiculeTarget *geom.Position
 	var displayPath []geom.Position
-	pathTicker := time.Tick(200 * time.Millisecond)
+	pathTicker := time.Tick(300 * time.Millisecond)
 
 	update := func(screen *ebiten.Image) error {
 		screen.Fill(color.NRGBA{0x00, 0x00, 0x88, 0xff})
@@ -95,10 +95,11 @@ func main() {
 			}
 			if displayPath != nil {
 				graphics.DrawPath(screen, displayPath...)
-				if !graphics.InputControls(drive) {
-					drive = ia.Genetic(vehicules[0], &displayPath, &blocks)
-				}
 			}
+		}
+
+		if !graphics.InputControls(drive) && len(displayPath) > 0 {
+			drive = ia.Genetic(vehicules[0], &displayPath, &blocks)
 		}
 
 		wheelTurn := vehicules[0].Drive(drive, 1.0/60)
