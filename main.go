@@ -6,6 +6,9 @@ import (
 	"math"
 	"math/rand"
 	"sync"
+	"time"
+
+	"github.com/glutamatt/autopilot/ia"
 
 	"github.com/glutamatt/autopilot/graphics"
 	geom "github.com/glutamatt/autopilot/model"
@@ -17,11 +20,11 @@ import (
 const minTurningRadius = 11
 const turnWheelInc = .02
 const carWidth = 5
-const blockBorder = 10
+const blockBorder = 3
 const carHeight = 2
 const uiScale = 2
-const groundWidth = 300
-const groundHeight = 150
+const groundWidth = 500
+const groundHeight = 300
 const adherenceMax = 2.5 // m/s/s newton force
 
 func createRandomVehicule() *geom.Vehicule {
@@ -47,12 +50,19 @@ func main() {
 	graphics.PepareWheel()
 	geom.InitPathTiles(blockBorder, groundWidth, groundHeight)
 	graphics.InitBlockImage()
-	geom.InitBlockCar(blockBorder)
-	geom.InitRadiusCar(carWidth, carHeight)
+	ia.BlocRadius = geom.InitRadiusBlock(blockBorder)
+	ia.VehiculRadius = geom.InitRadiusCar(carWidth, carHeight)
 
 	blocks := make(map[geom.Position]bool)
+
 	vehiculeImage, _ := ebiten.NewImage(int(carWidth*uiScale), int(carHeight*uiScale), ebiten.FilterNearest)
 	blocksImage, _ := ebiten.NewImage(groundWidth*uiScale, groundHeight*uiScale, ebiten.FilterNearest)
+
+	for _, p := range geom.GenerateBlocks(groundWidth, groundHeight) {
+		blocks[*p] = true
+		graphics.DrawBlock(p, blocksImage)
+	}
+
 	vehiculeImage.Fill(color.NRGBA{0xFF, 0xFF, 0xFF, 0xff})
 	for i := range vehicules {
 		vehicules[i] = createRandomVehicule()
@@ -60,8 +70,11 @@ func main() {
 
 	drive := &geom.Driving{}
 
+	var firstVehiculeTarget *geom.Position
+	var displayPath []geom.Position
+	pathTicker := time.Tick(200 * time.Millisecond)
+
 	update := func(screen *ebiten.Image) error {
-		graphics.InputControls(drive)
 		screen.Fill(color.NRGBA{0x00, 0x00, 0x88, 0xff})
 
 		wg := sync.WaitGroup{}
@@ -69,9 +82,23 @@ func main() {
 		optsChan := make(chan ebiten.DrawImageOptions)
 		screen.DrawImage(blocksImage, nil)
 
-		found, path := geom.FindPath(vehicules[0].Position, geom.Position{X: groundWidth / 2, Y: groundHeight / -2}, &blocks)
-		if found {
-			graphics.DrawPath(screen, path...)
+		if firstVehiculeTarget != nil {
+			select {
+			case <-pathTicker:
+				if found, path := geom.FindPath(vehicules[0].Position, *firstVehiculeTarget, &blocks); found {
+					displayPath = path
+					if len(displayPath) > 15 {
+						displayPath = path[len(displayPath)-15:]
+					}
+				}
+			default:
+			}
+			if displayPath != nil {
+				graphics.DrawPath(screen, displayPath...)
+				if !graphics.InputControls(drive) {
+					drive = ia.Genetic(vehicules[0], &displayPath, &blocks)
+				}
+			}
 		}
 
 		wheelTurn := vehicules[0].Drive(drive, 1.0/60)
@@ -97,14 +124,14 @@ func main() {
 		close(optsChan)
 
 		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
-			if block := graphics.HandleBlockAdd(blocksImage); block != nil {
-				blocks[*block] = true
+			if pos := graphics.GetMouseClickPos(); pos != nil {
+				firstVehiculeTarget = pos
 			}
 		}
 
 		ebitenutil.DebugPrint(screen, fmt.Sprintf(
-			"pos: %.1f:%.1f\n%#v\n%.1f km/h\n%.2f°\nfps:%.0f\nvcount: %d",
-			vehicules[0].X, vehicules[0].Y, drive, vehicules[0].Velocity/1000*60*60, vehicules[0].Rotation*180/math.Pi, ebiten.CurrentFPS(), len(vehicules)))
+			"pos: %.1f:%.1f\nturn: %.2f\nthrust: %.2f\n%.1f km/h\n%.2f°\nfps:%.0f\nvcount: %d",
+			vehicules[0].X, vehicules[0].Y, drive.Turning, drive.Thrust, vehicules[0].Velocity/1000*60*60, vehicules[0].Rotation*180/math.Pi, ebiten.CurrentFPS(), len(vehicules)))
 
 		return nil
 	}
