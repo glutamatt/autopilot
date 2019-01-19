@@ -12,12 +12,26 @@ import (
 
 var driveSequenceLen = 4
 var intervalTime = 500 * time.Millisecond
-var random = rand.New(rand.NewSource(time.Now().UnixNano()))
+var randomPool = sync.Pool{
+	New: func() interface{} {
+		return rand.New(rand.NewSource(time.Now().UnixNano()))
+	},
+}
 var distanceToLook = 50.0
 var VehiculRadius float64
 var BlocRadius float64
 
-func Genetic(vehicule *model.Vehicule, path *[]model.Position, blocks *map[model.Position]bool) *model.Driving {
+func Extrapol(vehicule *model.Vehicule, drive *model.Driving) []model.Position {
+	pos := make([]model.Position, driveSequenceLen)
+	v := copyVehicule(vehicule)
+	for i := 0; i < driveSequenceLen; i++ {
+		v.Drive(drive, intervalTime.Seconds())
+		pos[i] = v.Position
+	}
+	return pos
+}
+
+func Genetic(vehicule *model.Vehicule, path *[]model.Position, blocks *map[model.Position]bool) (*model.Driving, []model.Position) {
 	filteredBlocks := filterBlocks(vehicule.Position, blocks)
 
 	sequences := generateSequences(100, vehicule)
@@ -34,7 +48,7 @@ func Genetic(vehicule *model.Vehicule, path *[]model.Position, blocks *map[model
 		sort.Slice(newSequences, func(i, j int) bool { return newSequences[i].cost < newSequences[j].cost })
 		select {
 		case <-timer.C:
-			return newSequences[0].drives[0]
+			return newSequences[0].drives[0], newSequences[0].positions
 		default:
 			sequences = newSequences
 		}
@@ -44,6 +58,8 @@ func Genetic(vehicule *model.Vehicule, path *[]model.Position, blocks *map[model
 func mutateSequences(crossedLen int, sequences *[]*sequence, vehicule *model.Vehicule) []*sequence {
 	crossed := make([]*sequence, crossedLen)
 	sequencesLen := len(*sequences)
+	random := randomPool.Get().(*rand.Rand)
+	defer randomPool.Put(random)
 	for i := 0; i < crossedLen; i++ {
 		crossed[i] = &sequence{
 			drives:   make([]*model.Driving, driveSequenceLen),
@@ -57,6 +73,8 @@ func mutateSequences(crossedLen int, sequences *[]*sequence, vehicule *model.Veh
 
 func crossOver(crossedLen int, sequences *[]*sequence, vehicule *model.Vehicule) []*sequence {
 	crossed := make([]*sequence, crossedLen)
+	random := randomPool.Get().(*rand.Rand)
+	defer randomPool.Put(random)
 	sequencesLen := len(*sequences)
 	for i := 0; i < crossedLen; i++ {
 		fatherLen := random.Intn(driveSequenceLen)
@@ -103,20 +121,24 @@ func filterBlocks(vehicule model.Position, blocks *map[model.Position]bool) *[]m
 }
 
 type sequence struct {
-	drives   []*model.Driving
-	vehicule model.Vehicule
-	cost     float64
+	drives    []*model.Driving
+	positions []model.Position
+	vehicule  model.Vehicule
+	cost      float64
 }
 
 func (s *sequence) compute(interval time.Duration, blocks *[]model.Position, path *[]model.Position) {
-	for _, d := range s.drives {
+	s.positions = make([]model.Position, len(s.drives))
+	for i, d := range s.drives {
 		s.vehicule.Drive(d, interval.Seconds())
 		for _, pos := range *blocks {
 			if s.vehicule.Collide(&pos, VehiculRadius+BlocRadius) {
 				s.cost = math.Inf(1)
+				s.positions = s.positions[:i]
 				return
 			}
 		}
+		s.positions[i] = s.vehicule.Position
 	}
 
 	s.cost = (*path)[0].ManDist(s.vehicule.Position)
@@ -133,6 +155,8 @@ func driveSequence() []*model.Driving {
 func gene() *model.Driving {
 	//max break -11 m/s/s
 	//max boost 2.3 m/s/s
+	random := randomPool.Get().(*rand.Rand)
+	defer randomPool.Put(random)
 	return &model.Driving{
 		Turning: random.Float64()*2 - 1,
 		Thrust:  -11.0 + (2.3+11.0)*random.Float64(),
