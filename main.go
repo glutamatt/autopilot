@@ -25,7 +25,10 @@ const carHeight = 2
 const uiScale = 2
 const groundWidth = 500
 const groundHeight = 300
-const adherenceMax = 2.5 // m/s/s newton force
+const adherenceMax = 2.5    // m/s/s newton force
+const boostMax = 2.3        //m/s/s
+const breakMax = 11         //m/s/s
+const reverseMaxSpeed = 5.6 // m/S
 
 func createVehiculeManager(spots []geom.Position) *vehiculeManager {
 	spotKey := rand.Intn(len(spots))
@@ -51,6 +54,9 @@ func main() {
 	vehicules := []*vehiculeManager{}
 	geom.SetMinTurningRadius(minTurningRadius)
 	geom.SetAdherenceMax(adherenceMax)
+	geom.BoostMax = boostMax
+	geom.BreakMax = breakMax
+	geom.ReverseMaxSpeed = reverseMaxSpeed
 	graphics.SetTurnInc(turnWheelInc)
 	graphics.SetCarDimension(carWidth, carHeight)
 	graphics.UiScale = uiScale
@@ -63,6 +69,7 @@ func main() {
 
 	blocks := make(map[geom.Position]bool)
 	spots := map[geom.Position]bool{}
+	manualDrive := &geom.Driving{}
 
 	vehiculeImage, _ := ebiten.NewImage(int(carWidth*uiScale), int(carHeight*uiScale), ebiten.FilterNearest)
 	blocksImage, _ := ebiten.NewImage(groundWidth*uiScale, groundHeight*uiScale, ebiten.FilterNearest)
@@ -101,9 +108,7 @@ func main() {
 			graphics.DrawPath(screen, draw...)
 		*/
 
-		manualDrive := &geom.Driving{}
 		manualDriveOn := graphics.InputControls(manualDrive)
-		fmt.Printf("%#v\n", manualDrive)
 
 		arrived := map[int]bool{}
 		for iv, v := range vehicules {

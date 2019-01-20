@@ -59,11 +59,21 @@ func SetAdherenceMax(adherenceMax float64) {
 	adherenceMaxDotgravity = adherenceMax * 9.81
 }
 
+var BoostMax float64
+var BreakMax float64
+var ReverseMaxSpeed float64
+
 //Drive a vehicule
 func (v *Vehicule) Drive(driving *Driving, seconds float64) (wheelTurn float64) {
-	v.Velocity += driving.Thrust * seconds
-	if v.Velocity <= 0 {
-		v.Velocity = 0
+	thrustCoef := BoostMax
+	if (driving.Thrust < 0 && v.Velocity > 0) || (driving.Thrust > 0 && v.Velocity < 0) {
+		thrustCoef = BreakMax
+	}
+	v.Velocity += driving.Thrust * thrustCoef * seconds
+	if v.Velocity < -ReverseMaxSpeed {
+		v.Velocity = -ReverseMaxSpeed
+	}
+	if v.Velocity == 0 {
 		return
 	}
 	instantDist := v.Velocity * seconds

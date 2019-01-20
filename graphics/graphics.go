@@ -31,11 +31,11 @@ func SetTurnInc(f float64) {
 func InputControls(drive *model.Driving) (keyPressed bool) {
 	if ebiten.IsKeyPressed(ebiten.KeyDown) {
 		keyPressed = true
-		drive.Thrust = -11
+		drive.Thrust = -1
 	} else {
 		if ebiten.IsKeyPressed(ebiten.KeyUp) {
 			keyPressed = true
-			drive.Thrust = 2.3
+			drive.Thrust = 1
 		} else {
 			drive.Thrust = 0
 		}

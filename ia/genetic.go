@@ -159,6 +159,6 @@ func gene() *model.Driving {
 	defer randomPool.Put(random)
 	return &model.Driving{
 		Turning: random.Float64()*2 - 1,
-		Thrust:  -11.0 + (2.3+11.0)*random.Float64(),
+		Thrust:  random.Float64()*2 - 1,
 	}
 }
