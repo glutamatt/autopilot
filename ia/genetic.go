@@ -10,14 +10,14 @@ import (
 	"github.com/glutamatt/autopilot/model"
 )
 
-var driveSequenceLen = 4
-var intervalTime = 500 * time.Millisecond
+var driveSequenceLen = 5
+var intervalTime = 300 * time.Millisecond
 var randomPool = sync.Pool{
 	New: func() interface{} {
 		return rand.New(rand.NewSource(time.Now().UnixNano()))
 	},
 }
-var distanceToLook = 50.0
+var distanceToLook = 30.0
 var VehiculRadius float64
 var BlocRadius float64
 
@@ -31,27 +31,39 @@ func Extrapol(vehicule *model.Vehicule, drive *model.Driving) []model.Position {
 	return pos
 }
 
-func Genetic(vehicule *model.Vehicule, path *[]model.Position, blocks *map[model.Position]bool) (*model.Driving, []model.Position) {
+func Genetic(vehicule *model.Vehicule, previousDrives []*model.Driving, path *[]model.Position, blocks *map[model.Position]bool) ([]*model.Driving, []model.Position) {
 	filteredBlocks := filterBlocks(vehicule.Position, blocks)
 
 	sequences := generateSequences(100, vehicule)
+	if len(previousDrives) > 0 {
+		sequences = append(sequences, &sequence{drives: previousDrives, vehicule: copyVehicule(vehicule)})
+	}
 	computeSequences(&sequences, filteredBlocks, path)
 	sort.Slice(sequences, func(i, j int) bool { return sequences[i].cost < sequences[j].cost })
 
-	timer := time.NewTimer(time.Second/60 - 10*time.Millisecond)
+	//timer := time.NewTimer(time.Second/60 - 10*time.Millisecond)
+	i := 20
 	for {
+		i--
 		newSequences := []*sequence{}
 		newSequences = append(newSequences, crossOver(10, &sequences, vehicule)...)
 		newSequences = append(newSequences, mutateSequences(5, &sequences, vehicule)...)
 		newSequences = append(newSequences, generateSequences(10, vehicule)...)
 		computeSequences(&newSequences, filteredBlocks, path)
 		sort.Slice(newSequences, func(i, j int) bool { return newSequences[i].cost < newSequences[j].cost })
-		select {
-		case <-timer.C:
-			return newSequences[0].drives[0], newSequences[0].positions
-		default:
-			sequences = newSequences
+
+		if i == 0 {
+			return newSequences[0].drives, newSequences[0].positions
 		}
+		/*
+			select {
+			case <-timer.C:
+				return newSequences[0].drives, newSequences[0].positions
+			default:
+				//sequences = newSequences
+			}
+		*/
+		sequences = newSequences
 	}
 }
 

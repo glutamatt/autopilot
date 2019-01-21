@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"image/color"
 	"math"
-	"math/rand"
 	"sync"
 	"time"
 
@@ -26,25 +25,18 @@ const uiScale = 2
 const groundWidth = 500
 const groundHeight = 300
 const adherenceMax = 2.5    // m/s/s newton force
-const boostMax = 2.3        //m/s/s
+const boostMax = 3          //m/s/s
 const breakMax = 11         //m/s/s
 const reverseMaxSpeed = 5.6 // m/S
 
-func createVehiculeManager(spots []geom.Position) *vehiculeManager {
-	spotKey := rand.Intn(len(spots))
-	targetKey := 0
-	for {
-		targetKey = rand.Intn(len(spots))
-		if targetKey != spotKey {
-			break
-		}
-	}
+func createVehiculeManager(from, to geom.Position) *vehiculeManager {
 	return &vehiculeManager{
-		pathTicker: time.Tick(300 * time.Millisecond),
-		target:     spots[targetKey],
+		pathTicker: time.NewTicker(200 * time.Millisecond),
+		iaTicker:   time.NewTicker(40 * time.Millisecond),
+		target:     to,
 		vehicule: &geom.Vehicule{
-			Position: spots[spotKey],
-			Rotation: math.Atan2(spots[targetKey].Y-spots[spotKey].Y, spots[targetKey].X-spots[spotKey].X),
+			Position: from,
+			Rotation: math.Atan2(to.Y-from.Y, to.X-from.X),
 		},
 	}
 }
@@ -68,7 +60,7 @@ func main() {
 	ia.VehiculRadius = geom.InitRadiusCar(carWidth, carHeight)
 
 	blocks := make(map[geom.Position]bool)
-	spots := map[geom.Position]bool{}
+	spots := map[geom.Position]int{}
 	manualDrive := &geom.Driving{}
 
 	vehiculeImage, _ := ebiten.NewImage(int(carWidth*uiScale), int(carHeight*uiScale), ebiten.FilterNearest)
@@ -80,14 +72,15 @@ func main() {
 	}
 	vehiculeImage.Fill(color.NRGBA{0xFF, 0xFF, 0xFF, 0xff})
 
-	spawner := time.NewTicker(4 * time.Second)
+	spawner := time.NewTicker(7 * time.Second)
 
 	update := func(screen *ebiten.Image) error {
 
 		select {
 		case <-spawner.C:
-			if len(spots) > 1 {
-				vehicules = append(vehicules, createVehiculeManager(spotPositios(spots)))
+			s := spotPositions(spots)
+			for i := 0; i+1 < len(spots) && len(vehicules) < 4*len(spots); i = i + 2 {
+				vehicules = append(vehicules, createVehiculeManager(s[i], s[i+1]))
 			}
 		default:
 		}
@@ -99,7 +92,7 @@ func main() {
 		optsChan := make(chan ebiten.DrawImageOptions)
 		screen.DrawImage(blocksImage, nil)
 
-		//DEBUG
+		// DEBUG
 		/*
 			draw := []geom.Position{}
 			for _, v := range vehicules {
@@ -122,23 +115,27 @@ func main() {
 				defer wg.Done()
 				blocked := blockedPos(iv, vehicules, blocks)
 				select {
-				case <-v.pathTicker:
+				case <-v.iaTicker.C:
+					if len(v.pathFound) > 0 {
+						drives, future := ia.Genetic(v.vehicule, v.futureDrives, &v.pathFound, blocked)
+						v.futurePositions = future
+						v.futureDrives = drives
+					}
+				case <-v.pathTicker.C:
 					if found, path := geom.FindPath(v.vehicule.Position, v.target, blocked); found {
 						if found && len(path) < 3 {
 							arrived[iv] = true
 							return
 						}
-						if len(path) > 10 {
-							path = path[len(path)-10:]
+						if len(path) > 8 {
+							path = path[len(path)-8:]
 						}
 						v.pathFound = path
 					}
 				default:
 				}
-				if len(v.pathFound) > 0 {
-					drive, future := ia.Genetic(v.vehicule, &v.pathFound, blocked)
-					v.vehicule.Drive(drive, 1.0/60)
-					v.futurePositions = future
+				if v.futureDrives != nil {
+					v.vehicule.Drive(v.futureDrives[0], 1.0/60)
 				}
 			}(v, iv)
 		}
@@ -148,6 +145,9 @@ func main() {
 		for i, iv := range vehicules {
 			if !arrived[i] {
 				remainingV = append(remainingV, iv)
+			} else {
+				iv.pathTicker.Stop()
+				iv.iaTicker.Stop()
 			}
 		}
 		vehicules = remainingV
@@ -174,7 +174,13 @@ func main() {
 
 		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 			if pos := graphics.GetMouseClickPos(); pos != nil {
-				spots[*pos] = true
+				if _, exist := spots[*pos]; !exist {
+					spots[*pos] = len(spots)
+					if len(spots) > 1 && len(spots)%2 == 0 {
+						s := spotPositions(spots)
+						vehicules = append(vehicules, createVehiculeManager(s[len(s)-2], s[len(s)-1]))
+					}
+				}
 			}
 		}
 
@@ -194,18 +200,18 @@ func main() {
 
 type vehiculeManager struct {
 	vehicule        *geom.Vehicule
-	pathTicker      <-chan time.Time
+	pathTicker      *time.Ticker
+	iaTicker        *time.Ticker
 	target          geom.Position
 	pathFound       []geom.Position
 	futurePositions []geom.Position
+	futureDrives    []*geom.Driving
 }
 
-func spotPositios(spots map[geom.Position]bool) []geom.Position {
+func spotPositions(spots map[geom.Position]int) []geom.Position {
 	p := make([]geom.Position, len(spots))
-	i := 0
-	for q := range spots {
+	for q, i := range spots {
 		p[i] = q
-		i++
 	}
 	return p
 }
