@@ -8,7 +8,7 @@ import (
 func GenerateBlocks(w, h float64) []*Position {
 	rSource := rand.New(rand.NewSource(time.Now().Unix()))
 	blockCnt := 200
-	forbidDistance := float64(6 * BlockBorder)
+	forbidDistance := float64(5 * BlockBorder)
 	positions := []*Position{}
 	forbidenBlocks := map[Position]bool{}
 	for i := 0; i < blockCnt; i++ {

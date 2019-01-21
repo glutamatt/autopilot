@@ -19,11 +19,11 @@ import (
 const minTurningRadius = 11
 const turnWheelInc = .02
 const carWidth = 5
-const blockBorder = 3
+const blockBorder = 5
 const carHeight = 2
 const uiScale = 2
-const groundWidth = 500
-const groundHeight = 300
+const groundWidth = 400
+const groundHeight = 250
 const adherenceMax = 2.5    // m/s/s newton force
 const boostMax = 3          //m/s/s
 const breakMax = 11         //m/s/s
@@ -92,15 +92,6 @@ func main() {
 		optsChan := make(chan ebiten.DrawImageOptions)
 		screen.DrawImage(blocksImage, nil)
 
-		// DEBUG
-		/*
-			draw := []geom.Position{}
-			for _, v := range vehicules {
-				draw = append(draw, v.futurePositions...)
-			}
-			graphics.DrawPath(screen, draw...)
-		*/
-
 		manualDriveOn := graphics.InputControls(manualDrive)
 
 		arrived := map[int]bool{}
@@ -127,8 +118,8 @@ func main() {
 							arrived[iv] = true
 							return
 						}
-						if len(path) > 8 {
-							path = path[len(path)-8:]
+						if len(path) > 10 {
+							path = path[len(path)-10:]
 						}
 						v.pathFound = path
 					}
@@ -145,6 +136,7 @@ func main() {
 		for i, iv := range vehicules {
 			if !arrived[i] {
 				remainingV = append(remainingV, iv)
+				//graphics.DrawPath(screen, iv.futurePositions...)//print future positions
 			} else {
 				iv.pathTicker.Stop()
 				iv.iaTicker.Stop()
