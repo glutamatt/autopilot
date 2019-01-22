@@ -21,24 +21,20 @@ var distanceToLook = 30.0
 var VehiculRadius float64
 var BlocRadius float64
 
-func Extrapol(vehicule *model.Vehicule, drive *model.Driving) []model.Position {
-	pos := make([]model.Position, driveSequenceLen)
-	v := copyVehicule(vehicule)
-	for i := 0; i < driveSequenceLen; i++ {
-		v.Drive(drive, intervalTime.Seconds())
-		pos[i] = v.Position
-	}
-	return pos
-}
-
-func Genetic(vehicule *model.Vehicule, previousDrives []*model.Driving, path *[]model.Position, blocks *map[model.Position]bool) ([]*model.Driving, []model.Position) {
+func Genetic(
+	vehicule *model.Vehicule,
+	previousDrives []*model.Driving,
+	path *[]model.Position,
+	blocks *map[model.Position]bool,
+	vehiculesFuturePositions []map[model.Position]bool,
+) ([]*model.Driving, []model.Position) {
 	filteredBlocks := filterBlocks(vehicule.Position, blocks)
 
 	sequences := generateSequences(100, vehicule)
 	if len(previousDrives) > 0 {
 		sequences = append(sequences, &sequence{drives: previousDrives, vehicule: copyVehicule(vehicule)})
 	}
-	computeSequences(&sequences, filteredBlocks, path)
+	computeSequences(&sequences, filteredBlocks, path, vehiculesFuturePositions)
 	sort.Slice(sequences, func(i, j int) bool { return sequences[i].cost < sequences[j].cost })
 
 	//timer := time.NewTimer(time.Second/60 - 10*time.Millisecond)
@@ -49,7 +45,7 @@ func Genetic(vehicule *model.Vehicule, previousDrives []*model.Driving, path *[]
 		newSequences = append(newSequences, crossOver(10, &sequences, vehicule)...)
 		newSequences = append(newSequences, mutateSequences(5, &sequences, vehicule)...)
 		newSequences = append(newSequences, generateSequences(10, vehicule)...)
-		computeSequences(&newSequences, filteredBlocks, path)
+		computeSequences(&newSequences, filteredBlocks, path, vehiculesFuturePositions)
 		sort.Slice(newSequences, func(i, j int) bool { return newSequences[i].cost < newSequences[j].cost })
 
 		if i == 0 {
@@ -113,11 +109,11 @@ func generateSequences(len int, vehicule *model.Vehicule) []*sequence {
 	return sequences
 }
 
-func computeSequences(sequences *[]*sequence, filteredBlocks *[]model.Position, path *[]model.Position) {
+func computeSequences(sequences *[]*sequence, filteredBlocks *[]model.Position, path *[]model.Position, vehiculesFuturePositions []map[model.Position]bool) {
 	wg := sync.WaitGroup{}
 	wg.Add(len(*sequences))
 	for _, seq := range *sequences {
-		go func(s *sequence) { s.compute(intervalTime, filteredBlocks, path); wg.Done() }(seq)
+		go func(s *sequence) { s.compute(intervalTime, filteredBlocks, path, vehiculesFuturePositions); wg.Done() }(seq)
 	}
 	wg.Wait()
 }
@@ -139,15 +135,31 @@ type sequence struct {
 	cost      float64
 }
 
-func (s *sequence) compute(interval time.Duration, blocks *[]model.Position, path *[]model.Position) {
+func killSequence(s *sequence, i int) {
+	s.cost = math.Inf(1)
+	s.positions = s.positions[:i]
+}
+
+func (s *sequence) compute(interval time.Duration, blocks *[]model.Position, path *[]model.Position, vehiculesFuturePositions []map[model.Position]bool) {
 	s.positions = make([]model.Position, len(s.drives))
 	for i, d := range s.drives {
 		s.vehicule.Drive(d, interval.Seconds())
+		if s.vehicule.Velocity > 13.80 {
+			killSequence(s, i)
+			return
+		}
 		for _, pos := range *blocks {
 			if s.vehicule.Collide(&pos, VehiculRadius+BlocRadius) {
-				s.cost = math.Inf(1)
-				s.positions = s.positions[:i]
+				killSequence(s, i)
 				return
+			}
+		}
+		if len(vehiculesFuturePositions) >= i+1 {
+			for pos := range vehiculesFuturePositions[i] {
+				if s.vehicule.Collide(&pos, VehiculRadius+VehiculRadius) {
+					killSequence(s, i)
+					return
+				}
 			}
 		}
 		s.positions[i] = s.vehicule.Position
@@ -173,4 +185,15 @@ func gene() *model.Driving {
 		Turning: random.Float64()*2 - 1,
 		Thrust:  random.Float64()*2 - 1,
 	}
+}
+
+//Extrapol the future positions of the vehicule from future drivings
+func Extrapol(vehicule *model.Vehicule, drive *model.Driving) []model.Position {
+	pos := make([]model.Position, driveSequenceLen)
+	v := copyVehicule(vehicule)
+	for i := 0; i < driveSequenceLen; i++ {
+		v.Drive(drive, intervalTime.Seconds())
+		pos[i] = v.Position
+	}
+	return pos
 }

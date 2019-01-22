@@ -28,6 +28,7 @@ const adherenceMax = 2.5    // m/s/s newton force
 const boostMax = 3          //m/s/s
 const breakMax = 11         //m/s/s
 const reverseMaxSpeed = 5.6 // m/S
+const SecurityDistance = .8
 
 func createVehiculeManager(from, to geom.Position) *vehiculeManager {
 	return &vehiculeManager{
@@ -47,6 +48,7 @@ func main() {
 	geom.SetMinTurningRadius(minTurningRadius)
 	geom.SetAdherenceMax(adherenceMax)
 	geom.BoostMax = boostMax
+	geom.SecurityDistance = SecurityDistance
 	geom.BreakMax = breakMax
 	geom.ReverseMaxSpeed = reverseMaxSpeed
 	graphics.SetTurnInc(turnWheelInc)
@@ -94,7 +96,8 @@ func main() {
 
 		manualDriveOn := graphics.InputControls(manualDrive)
 
-		arrived := map[int]bool{}
+		arrivedChan := make(chan int)
+
 		for iv, v := range vehicules {
 			if iv == 0 && manualDriveOn {
 				v.futurePositions = ia.Extrapol(v.vehicule, manualDrive)
@@ -104,18 +107,23 @@ func main() {
 			}
 			go func(v *vehiculeManager, iv int) {
 				defer wg.Done()
-				blocked := blockedPos(iv, vehicules, blocks)
 				select {
 				case <-v.iaTicker.C:
 					if len(v.pathFound) > 0 {
-						drives, future := ia.Genetic(v.vehicule, v.futureDrives, &v.pathFound, blocked)
+						drives, future := ia.Genetic(
+							v.vehicule,
+							v.futureDrives,
+							&v.pathFound,
+							&blocks,
+							futureBlockedPos(iv, vehicules),
+						)
 						v.futurePositions = future
 						v.futureDrives = drives
 					}
 				case <-v.pathTicker.C:
-					if found, path := geom.FindPath(v.vehicule.Position, v.target, blocked); found {
+					if found, path := geom.FindPath(v.vehicule.Position, v.target, &blocks); found {
 						if found && len(path) < 3 {
-							arrived[iv] = true
+							arrivedChan <- iv
 							return
 						}
 						if len(path) > 10 {
@@ -130,13 +138,21 @@ func main() {
 				}
 			}(v, iv)
 		}
+
+		arrived := map[int]bool{}
+		go func() {
+			for i := range arrivedChan {
+				arrived[i] = true
+			}
+		}()
+
 		wg.Wait()
 
 		remainingV := []*vehiculeManager{}
 		for i, iv := range vehicules {
 			if !arrived[i] {
 				remainingV = append(remainingV, iv)
-				//graphics.DrawPath(screen, iv.futurePositions...)//print future positions
+				graphics.DrawPath(screen, iv.futurePositions...) // DEBUG print future positions
 			} else {
 				iv.pathTicker.Stop()
 				iv.iaTicker.Stop()
@@ -208,19 +224,16 @@ func spotPositions(spots map[geom.Position]int) []geom.Position {
 	return p
 }
 
-func blockedPos(vehiculeKey int, vehicules []*vehiculeManager, blocks map[geom.Position]bool) *map[geom.Position]bool {
-	blocked := map[geom.Position]bool{}
-
-	for i, v := range vehicules {
-		if i != vehiculeKey {
-			for _, p := range v.futurePositions {
-				blocked[p] = true
+func futureBlockedPos(vehiculeKey int, vehicules []*vehiculeManager) []map[geom.Position]bool {
+	posLen := len(vehicules[0].futurePositions)
+	ret := make([]map[geom.Position]bool, posLen)
+	for i := 0; i < posLen; i++ {
+		ret[i] = make(map[geom.Position]bool)
+		for iv, v := range vehicules {
+			if iv != vehiculeKey && len(v.futurePositions) >= i+1 {
+				ret[i][v.futurePositions[i]] = true
 			}
 		}
 	}
-
-	for p, b := range blocks {
-		blocked[p] = b
-	}
-	return &blocked
+	return ret
 }

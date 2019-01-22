@@ -36,8 +36,11 @@ func SetMinTurningRadius(r float64) {
 	minTurningRadius = r
 }
 
+var SecurityDistance float64
+
 //Collide a vehicule : is my vehicule farrer than dist from other
 func (v *Vehicule) Collide(other *Position, dist float64) bool {
+	dist += SecurityDistance
 	xdist := math.Abs(v.X - other.X)
 
 	if xdist > dist {
