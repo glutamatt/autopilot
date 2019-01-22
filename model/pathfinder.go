@@ -2,7 +2,6 @@ package model
 
 import (
 	"math"
-	"sync"
 
 	astar "github.com/beefsack/go-astar"
 )
@@ -98,6 +97,7 @@ func (t *Tile) PathEstimatedCost(to astar.Pather) float64 {
 	return math.Log(math.Abs(t.X-toT.X) + math.Abs(t.Y-toT.Y))
 }
 
+/*
 type cacheKey struct{ f, t Position }
 
 var cachePath = map[cacheKey]*[]Position{}
@@ -112,7 +112,7 @@ func saveInCache(key cacheKey, path *[]Position) (bool, []Position) {
 	}
 	return false, *path
 }
-
+*/
 func FindPath(from, to Position, blocks *map[Position]bool) (bool, []Position) {
 	blockMap = blocks
 
@@ -131,26 +131,27 @@ func FindPath(from, to Position, blocks *map[Position]bool) (bool, []Position) {
 	if !ok {
 		return false, nil
 	}
-
-	cacheLock.RLock()
-	keyCache := cacheKey{*start, *end}
-	if cached, exist := cachePath[keyCache]; exist {
-		cacheLock.RUnlock()
-		if cached == nil {
-			return false, nil
+	/*
+		cacheLock.RLock()
+		keyCache := cacheKey{*start, *end}
+		if cached, exist := cachePath[keyCache]; exist {
+			cacheLock.RUnlock()
+			if cached == nil {
+				return false, nil
+			}
+			return true, *cached
 		}
-		return true, *cached
-	}
-	cacheLock.RUnlock()
-
+		cacheLock.RUnlock()
+	*/
 	path, _, found := astar.Path(startTile, endTile)
 	if !found {
-		return saveInCache(keyCache, nil)
+		return false, nil
+		//return saveInCache(keyCache, nil)
 	}
 
 	if len(path) < 2 {
-		saveInCache(keyCache, nil)
-		return saveInCache(keyCache, nil)
+		return false, nil
+		//return saveInCache(keyCache, nil)
 	}
 
 	pathPositions := make([]Position, len(path)-1)
@@ -159,5 +160,6 @@ func FindPath(from, to Position, blocks *map[Position]bool) (bool, []Position) {
 		pathPositions[i] = p.Position
 	}
 
-	return saveInCache(keyCache, &pathPositions)
+	return true, pathPositions
+	//return saveInCache(keyCache, &pathPositions)
 }
