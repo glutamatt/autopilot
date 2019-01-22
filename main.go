@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image/color"
 	"math"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -28,7 +29,9 @@ const adherenceMax = 2.5    // m/s/s newton force
 const boostMax = 3          //m/s/s
 const breakMax = 11         //m/s/s
 const reverseMaxSpeed = 5.6 // m/S
-const SecurityDistance = .8
+const securityDistance = .8
+
+var spawneFreq = 7 * time.Second
 
 func createVehiculeManager(from, to geom.Position) *vehiculeManager {
 	return &vehiculeManager{
@@ -48,7 +51,7 @@ func main() {
 	geom.SetMinTurningRadius(minTurningRadius)
 	geom.SetAdherenceMax(adherenceMax)
 	geom.BoostMax = boostMax
-	geom.SecurityDistance = SecurityDistance
+	geom.SecurityDistance = securityDistance
 	geom.BreakMax = breakMax
 	geom.ReverseMaxSpeed = reverseMaxSpeed
 	graphics.SetTurnInc(turnWheelInc)
@@ -74,16 +77,19 @@ func main() {
 	}
 	vehiculeImage.Fill(color.NRGBA{0xFF, 0xFF, 0xFF, 0xff})
 
-	spawner := time.NewTicker(7 * time.Second)
+	spawner := time.NewTimer(7 * time.Second)
 
 	update := func(screen *ebiten.Image) error {
-
 		select {
 		case <-spawner.C:
-			s := spotPositions(spots)
-			for i := 0; i+1 < len(spots) && len(vehicules) < 4*len(spots); i = i + 2 {
-				vehicules = append(vehicules, createVehiculeManager(s[i], s[i+1]))
+			if len(spots) > 1 && len(vehicules) < 33 {
+				from, to := spotPositions(spots, false)
+				vehicules = append(vehicules, createVehiculeManager(from, to))
+				spawner = time.NewTimer(spawneFreq / time.Duration(len(spots)/2))
+			} else {
+				spawner = time.NewTimer(spawneFreq)
 			}
+
 		default:
 		}
 
@@ -152,7 +158,7 @@ func main() {
 		for i, iv := range vehicules {
 			if !arrived[i] {
 				remainingV = append(remainingV, iv)
-				graphics.DrawPath(screen, iv.futurePositions...) // DEBUG print future positions
+				//graphics.DrawPath(screen, iv.futurePositions...) // DEBUG print future positions
 			} else {
 				iv.pathTicker.Stop()
 				iv.iaTicker.Stop()
@@ -185,8 +191,8 @@ func main() {
 				if _, exist := spots[*pos]; !exist {
 					spots[*pos] = len(spots)
 					if len(spots) > 1 && len(spots)%2 == 0 {
-						s := spotPositions(spots)
-						vehicules = append(vehicules, createVehiculeManager(s[len(s)-2], s[len(s)-1]))
+						from, to := spotPositions(spots, true)
+						vehicules = append(vehicules, createVehiculeManager(from, to))
 					}
 				}
 			}
@@ -216,12 +222,16 @@ type vehiculeManager struct {
 	futureDrives    []*geom.Driving
 }
 
-func spotPositions(spots map[geom.Position]int) []geom.Position {
+func spotPositions(spots map[geom.Position]int, last bool) (geom.Position, geom.Position) {
 	p := make([]geom.Position, len(spots))
 	for q, i := range spots {
 		p[i] = q
 	}
-	return p
+	if last {
+		return p[len(p)-2], p[len(p)-1]
+	}
+	k := rand.Intn(len(spots)/2) * 2
+	return p[k], p[k+1]
 }
 
 func futureBlockedPos(vehiculeKey int, vehicules []*vehiculeManager) []map[geom.Position]bool {
