@@ -132,8 +132,8 @@ func main() {
 							arrivedChan <- iv
 							return
 						}
-						if len(path) > 10 {
-							path = path[len(path)-10:]
+						if len(path) > 8 {
+							path = path[len(path)-8:]
 						}
 						v.pathFound = path
 					}
