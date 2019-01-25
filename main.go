@@ -83,8 +83,8 @@ func main() {
 		select {
 		case <-spawner.C:
 			if len(spots) > 1 && len(vehicules) < 25 {
-				//from, to := spotPositions(spots, false)
-				//vehicules = append(vehicules, createVehiculeManager(from, to))
+				from, to := spotPositions(spots, false)
+				vehicules = append(vehicules, createVehiculeManager(from, to))
 				spawner = time.NewTimer(spawneFreq / time.Duration(len(spots)/2))
 			} else {
 				spawner = time.NewTimer(spawneFreq)
@@ -236,7 +236,7 @@ func (v *vehiculeManager) Target() geom.Position {
 		return geom.Position{}
 	}
 	vel := math.Max(v.vehicule.Velocity, 0)
-	i := int(vel*3/13.8 + 3)
+	i := int(vel*4/13.8 + 3)
 	if i > len(v.pathFound) {
 		i = len(v.pathFound)
 	}
@@ -277,7 +277,7 @@ func blocksAndSlowCars(blocks map[geom.Position]bool, indexVehicule int, vehicul
 	}
 	for i, v := range vehicules {
 		if i != indexVehicule {
-			if math.Abs(v.vehicule.Velocity) < 2 {
+			if math.Abs(v.vehicule.Velocity) < 3 {
 				p := v.vehicule.Position
 				p.Gap(blockBorder)
 				newBlocks[p] = true
