@@ -187,11 +187,6 @@ type sequence struct {
 	cost      float64
 }
 
-func killSequence(s *sequence, i int) {
-	s.cost = math.Inf(1)
-	s.positions = s.positions[:i]
-}
-
 type costFunc func(*sequence, model.Position) float64
 
 func costByFarTargetDistance(s *sequence, target model.Position) float64 {
@@ -207,15 +202,13 @@ func (s *sequence) compute(sess *session) {
 		}
 		for _, pos := range *sess.blocks {
 			if s.vehicule.Collide(&pos, VehiculRadius+BlocRadius) {
-				killSequence(s, i)
-				return
+				s.cost += 100
 			}
 		}
 		if len(sess.vehiculesFuturePositions) >= i+1 {
 			for pos := range sess.vehiculesFuturePositions[i] {
 				if s.vehicule.Collide(&pos, VehiculRadius+VehiculRadius) {
-					killSequence(s, i)
-					return
+					s.cost += 100
 				}
 			}
 		}
