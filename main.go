@@ -40,7 +40,7 @@ func createVehiculeManager(from, to geom.Position) *vehiculeManager {
 		target:     to,
 		vehicule: &geom.Vehicule{
 			Position: from,
-			Rotation: math.Atan2(to.Y-from.Y, to.X-from.X),
+			Rotation: from.Angle(to),
 		},
 	}
 }
@@ -82,9 +82,9 @@ func main() {
 	update := func(screen *ebiten.Image) error {
 		select {
 		case <-spawner.C:
-			if len(spots) > 1 && len(vehicules) < 33 {
-				from, to := spotPositions(spots, false)
-				vehicules = append(vehicules, createVehiculeManager(from, to))
+			if len(spots) > 1 && len(vehicules) < 25 {
+				//from, to := spotPositions(spots, false)
+				//vehicules = append(vehicules, createVehiculeManager(from, to))
 				spawner = time.NewTimer(spawneFreq / time.Duration(len(spots)/2))
 			} else {
 				spawner = time.NewTimer(spawneFreq)
@@ -119,7 +119,7 @@ func main() {
 						drives, future := ia.Genetic(
 							v.vehicule,
 							v.futureDrives,
-							&v.pathFound,
+							v.Target(),
 							&blocks,
 							futureBlockedPos(iv, vehicules),
 						)
@@ -127,8 +127,12 @@ func main() {
 						v.futureDrives = drives
 					}
 				case <-v.pathTicker.C:
-					if found, path := geom.FindPath(v.vehicule.Position, v.target, &blocks); found {
-						if found && len(path) < 3 {
+					if found, path := geom.FindPath(
+						v.vehicule.Position,
+						v.target,
+						blocksAndSlowCars(blocks, iv, vehicules),
+					); found {
+						if len(path) < 3 {
 							arrivedChan <- iv
 							return
 						}
@@ -136,6 +140,9 @@ func main() {
 							path = path[len(path)-8:]
 						}
 						v.pathFound = path
+					} else {
+						arrivedChan <- iv
+						return
 					}
 				default:
 				}
@@ -153,12 +160,14 @@ func main() {
 		}()
 
 		wg.Wait()
+		close(arrivedChan)
 
 		remainingV := []*vehiculeManager{}
 		for i, iv := range vehicules {
 			if !arrived[i] {
 				remainingV = append(remainingV, iv)
-				//graphics.DrawPath(screen, iv.futurePositions...) // DEBUG print future positions
+				graphics.DrawPath(screen, iv.futurePositions...) // DEBUG print future positions
+				graphics.DrawPath(screen, iv.Target())           // DEBUG print future positions
 			} else {
 				iv.pathTicker.Stop()
 				iv.iaTicker.Stop()
@@ -222,6 +231,19 @@ type vehiculeManager struct {
 	futureDrives    []*geom.Driving
 }
 
+func (v *vehiculeManager) Target() geom.Position {
+	if v.pathFound == nil || len(v.pathFound) == 0 {
+		return geom.Position{}
+	}
+	vel := math.Max(v.vehicule.Velocity, 0)
+	i := int(vel*3/13.8 + 3)
+	if i > len(v.pathFound) {
+		i = len(v.pathFound)
+	}
+	pathI := len(v.pathFound) - i
+	return v.pathFound[pathI]
+}
+
 func spotPositions(spots map[geom.Position]int, last bool) (geom.Position, geom.Position) {
 	p := make([]geom.Position, len(spots))
 	for q, i := range spots {
@@ -246,4 +268,21 @@ func futureBlockedPos(vehiculeKey int, vehicules []*vehiculeManager) []map[geom.
 		}
 	}
 	return ret
+}
+
+func blocksAndSlowCars(blocks map[geom.Position]bool, indexVehicule int, vehicules []*vehiculeManager) *map[geom.Position]bool {
+	newBlocks := make(map[geom.Position]bool, len(blocks))
+	for p, v := range blocks {
+		newBlocks[p] = v
+	}
+	for i, v := range vehicules {
+		if i != indexVehicule {
+			if math.Abs(v.vehicule.Velocity) < 2 {
+				p := v.vehicule.Position
+				p.Gap(blockBorder)
+				newBlocks[p] = true
+			}
+		}
+	}
+	return &newBlocks
 }

@@ -16,6 +16,10 @@ func (p Position) ManDist(to Position) float64 {
 	return math.Abs(p.X-to.X) + math.Abs(p.Y-to.Y)
 }
 
+func (p Position) Angle(to Position) float64 {
+	return math.Atan2(to.Y-p.Y, to.X-p.X)
+}
+
 //Driving instruction
 type Driving struct {
 	Turning float64
@@ -120,7 +124,7 @@ var vehiculRadius float64
 var blocRadius float64
 
 func InitRadiusCar(carWidth, carHeight int) float64 {
-	vehiculRadius = math.Sqrt(float64(carWidth*carWidth)/4.0 + float64(carHeight*carHeight)/4.0)
+	vehiculRadius = math.Sqrt(float64(carWidth*carWidth)+float64(carHeight*carHeight)) / 2
 	return vehiculRadius
 }
 
