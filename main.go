@@ -31,7 +31,7 @@ const breakMax = 11         //m/s/s
 const reverseMaxSpeed = 5.6 // m/S
 const securityDistance = .8
 
-var spawneFreq = 7 * time.Second
+var spawneFreq = 10 * time.Second
 
 func createVehiculeManager(from, to geom.Position) *vehiculeManager {
 	return &vehiculeManager{
@@ -104,6 +104,9 @@ func main() {
 
 		arrivedChan := make(chan int)
 
+		//blocksAndCars := getBlocksAndCars(blocks, vehicules, func(v *geom.Vehicule) bool { return true })
+		//blocksAndSlowCars :=
+
 		for iv, v := range vehicules {
 			if iv == 0 && manualDriveOn {
 				v.futurePositions = ia.Extrapol(v.vehicule, manualDrive)
@@ -120,7 +123,7 @@ func main() {
 							v.vehicule,
 							v.futureDrives,
 							v.Target(),
-							blocksAndCars(blocks, iv, vehicules, func(v *geom.Vehicule) bool { return true }),
+							getBlocksAndCars(blocks, vehicules, func(i int, v *geom.Vehicule) bool { return i != iv }),
 							futureBlockedPos(iv, vehicules),
 						)
 						v.futurePositions = future
@@ -130,7 +133,7 @@ func main() {
 					if found, path := geom.FindPath(
 						v.vehicule.Position,
 						v.target,
-						blocksAndCars(blocks, iv, vehicules, func(v *geom.Vehicule) bool { return math.Abs(v.Velocity) < 3 }),
+						getBlocksAndCars(blocks, vehicules, func(i int, v *geom.Vehicule) bool { return i != iv && math.Abs(v.Velocity) < 3 }),
 					); found {
 						if len(path) < 3 {
 							arrivedChan <- iv
@@ -270,22 +273,31 @@ func futureBlockedPos(vehiculeKey int, vehicules []*vehiculeManager) []map[geom.
 	return ret
 }
 
-func blocksAndCars(blocks map[geom.Position]bool, indexVehicule int, vehicules []*vehiculeManager, carFilter func(*geom.Vehicule) bool) *map[geom.Position]bool {
+func getBlocksAndCars(blocks map[geom.Position]bool, vehicules []*vehiculeManager, carFilter func(int, *geom.Vehicule) bool) *map[geom.Position]bool {
 	newBlocks := make(map[geom.Position]bool, len(blocks))
 	for p, v := range blocks {
 		newBlocks[p] = v
 	}
-	vPos := vehicules[indexVehicule].vehicule.Position
-	vPos.Gap(blockBorder)
 	for i, v := range vehicules {
-		if i != indexVehicule && carFilter(v.vehicule) {
+		if carFilter(i, v.vehicule) {
 			p := v.vehicule.Position
 			p.Gap(blockBorder)
-			if vPos != p {
-				newBlocks[p] = true
-			}
-
+			newBlocks[p] = true
+			//newBlocks = geom.BlocksArround(newBlocks, v.vehicule.Position, blockBorder, blockBorder, 2.0)
 		}
 	}
 	return &newBlocks
 }
+
+/*
+func blocksButPos(blocks map[geom.Position]bool, p geom.Position) *map[geom.Position]bool {
+	newBlocks := make(map[geom.Position]bool, len(blocks))
+	p.Gap(blockBorder)
+	for pos, v := range blocks {
+		if pos != p {
+			newBlocks[pos] = v
+		}
+	}
+	return &newBlocks
+}
+*/

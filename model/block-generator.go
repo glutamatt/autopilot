@@ -26,17 +26,24 @@ func GenerateBlocks(w, h float64) []*Position {
 				positions = append(positions, pos)
 			}
 		}
-		forbidPos := Position{bStart.X - bw/2 - forbidDistance, bStart.Y - bh/2 - forbidDistance}
-		for forbidPos.X < bStart.X+bw/2+forbidDistance {
-			for forbidPos.Y < bStart.Y+bh/2+forbidDistance {
-				forbidPos.Gap(BlockBorder)
-				forbidenBlocks[forbidPos] = true
-				forbidPos.Y += float64(BlockBorder)
-			}
-			forbidPos.Y = bStart.Y - bh/2 - forbidDistance
-			forbidPos.X += float64(BlockBorder)
-		}
+
+		forbidenBlocks = BlocksArround(forbidenBlocks, *bStart, bw, bh, forbidDistance)
 	}
 
 	return positions
+}
+
+func BlocksArround(forbidenBlocks map[Position]bool, bStart Position, bw, bh, forbidDistance float64) map[Position]bool {
+	forbidPos := Position{bStart.X - bw/2 - forbidDistance, bStart.Y - bh/2 - forbidDistance}
+	for forbidPos.X < bStart.X+bw/2+forbidDistance {
+		for forbidPos.Y < bStart.Y+bh/2+forbidDistance {
+			forbidPos.Gap(BlockBorder)
+			forbidenBlocks[forbidPos] = true
+			forbidPos.Y += float64(BlockBorder)
+		}
+		forbidPos.Y = bStart.Y - bh/2 - forbidDistance
+		forbidPos.X += float64(BlockBorder)
+	}
+
+	return forbidenBlocks
 }
