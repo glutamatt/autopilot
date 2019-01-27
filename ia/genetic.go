@@ -10,15 +10,13 @@ import (
 	"github.com/glutamatt/autopilot/model"
 )
 
-//var driveSequenceLen = 5
-//var intervalTime = (400 * time.Millisecond).Seconds()
 var randomPool = sync.Pool{
 	New: func() interface{} {
 		return rand.New(rand.NewSource(time.Now().UnixNano()))
 	},
 }
-var distanceToLook = 30.0
-var distanceTPredict = 20.0
+
+var distanceTPredict = 30.0
 var angleOkThreshold = math.Pi / 6
 var VehiculRadius float64
 var BlocRadius float64
@@ -33,6 +31,78 @@ type session struct {
 	vehiculesFuturePositions []map[model.Position]bool
 	sequences                []*sequence
 	costF                    costFunc
+}
+
+func Genetic(
+	vehicule *model.Vehicule,
+	previousDrives []*model.Driving,
+	target model.Position,
+	blocks *map[model.Position]bool,
+	vehiculesFuturePositions []map[model.Position]bool,
+) ([]*model.Driving, []model.Position) {
+
+	sess := session{
+		vehicule:                 vehicule,
+		blocks:                   filterBlocks(vehicule.Position, blocks),
+		vehiculesFuturePositions: vehiculesFuturePositions,
+		target:                   target,
+		costF:                    costByFarTargetDistance,
+		driveSequenceLen:         int(distanceTPredict/VehiculRadius) + 1,
+		drivesInterval:           driveInterval(vehicule.Velocity),
+	}
+
+	anglePosition := vehicule.Position.Angle(target)
+	angleToCheck := math.Abs(math.Mod(vehicule.Rotation, 2*math.Pi) - anglePosition)
+	if angleToCheck > math.Pi {
+		angleToCheck = (2 * math.Pi) - angleToCheck
+	}
+
+	if vehicule.Velocity < 1.5 && angleToCheck > angleOkThreshold {
+		sess.costF = costByAngleToTarget(vehicule, anglePosition)
+	}
+
+	sess.sequences = generateSequences(sess.driveSequenceLen, 200, vehicule)
+	if len(previousDrives) > 0 {
+		if len(previousDrives) < sess.driveSequenceLen {
+			previousDrives = append(previousDrives, driveSequence(sess.driveSequenceLen-len(previousDrives))...)
+		}
+		sess.sequences = append(sess.sequences, &sequence{drives: previousDrives[:sess.driveSequenceLen], vehicule: copyVehicule(vehicule)})
+	}
+
+	sess.computeSequences()
+	i := 30
+	for {
+		i--
+		sess.naturalSelection()
+		sess.computeSequences()
+		if i == 0 {
+			return sess.sequences[0].drives, sess.sequences[0].positions
+		}
+	}
+}
+
+func costByAngleToTarget(vehicule *model.Vehicule, anglePositions float64) costFunc {
+	return func(s *sequence, target model.Position) float64 {
+		invert := 0.0
+		if (vehicule.Velocity < 0 && s.drives[0].Thrust > 0) || (vehicule.Velocity > 0 && s.drives[0].Thrust < 0) {
+			invert = 20
+		}
+		angle := math.Abs(math.Mod(s.vehicule.Rotation, 2*math.Pi) - anglePositions)
+		if angle > math.Pi {
+			angle = (2 * math.Pi) - angle
+		}
+		return angle + invert
+	}
+}
+
+func driveInterval(velocity float64) time.Duration {
+	if velocity < 0 {
+		velocity *= -1
+	}
+	if velocity < 5 {
+		velocity = 5
+	}
+	return time.Duration(float64(time.Second) * VehiculRadius / velocity)
 }
 
 func (sess *session) computeSequences() {
@@ -54,74 +124,6 @@ func (sess *session) naturalSelection() {
 	newSequences = append(newSequences, mutateSequences(sess, 5, &sess.sequences, sess.vehicule)...)
 	newSequences = append(newSequences, generateSequences(sess.driveSequenceLen, 10, sess.vehicule)...)
 	sess.sequences = newSequences
-}
-
-func driveInterval(velocity float64) time.Duration {
-	if velocity < 0 {
-		velocity *= -1
-	}
-	if velocity < 5 {
-		velocity = 5
-	}
-	return time.Duration(float64(time.Second) * VehiculRadius / velocity)
-}
-
-func Genetic(
-	vehicule *model.Vehicule,
-	previousDrives []*model.Driving,
-	target model.Position,
-	blocks *map[model.Position]bool,
-	vehiculesFuturePositions []map[model.Position]bool,
-) ([]*model.Driving, []model.Position) {
-
-	sess := session{
-		vehicule:                 vehicule,
-		blocks:                   filterBlocks(vehicule.Position, blocks),
-		vehiculesFuturePositions: vehiculesFuturePositions,
-		target:                   target,
-		costF:                    costByFarTargetDistance,
-		driveSequenceLen:         int(distanceTPredict/VehiculRadius) + 1,
-		drivesInterval:           driveInterval(vehicule.Velocity),
-	}
-
-	anglePositions := vehicule.Position.Angle(target)
-	angleToCheck := math.Abs(math.Mod(vehicule.Rotation, 2*math.Pi) - anglePositions)
-	if angleToCheck > math.Pi {
-		angleToCheck = (2 * math.Pi) - angleToCheck
-	}
-
-	if vehicule.Velocity < 1.5 && angleToCheck > angleOkThreshold {
-		sess.costF = func(s *sequence, target model.Position) float64 {
-			invert := 0.0
-			if (vehicule.Velocity < 0 && s.drives[0].Thrust > 0) || (vehicule.Velocity > 0 && s.drives[0].Thrust < 0) {
-				invert = 20
-			}
-			angle := math.Abs(math.Mod(s.vehicule.Rotation, 2*math.Pi) - anglePositions)
-			if angle > math.Pi {
-				angle = (2 * math.Pi) - angle
-			}
-			return angle + invert
-		}
-	}
-
-	sess.sequences = generateSequences(sess.driveSequenceLen, 100, vehicule)
-	if len(previousDrives) > 0 {
-		if len(previousDrives) < sess.driveSequenceLen {
-			previousDrives = append(previousDrives, driveSequence(sess.driveSequenceLen-len(previousDrives))...)
-		}
-		sess.sequences = append(sess.sequences, &sequence{drives: previousDrives[:sess.driveSequenceLen], vehicule: copyVehicule(vehicule)})
-	}
-
-	sess.computeSequences()
-	i := 20
-	for {
-		i--
-		sess.naturalSelection()
-		sess.computeSequences()
-		if i == 0 {
-			return sess.sequences[0].drives, sess.sequences[0].positions
-		}
-	}
 }
 
 func mutateSequences(sess *session, crossedLen int, sequences *[]*sequence, vehicule *model.Vehicule) []*sequence {
@@ -173,7 +175,7 @@ func generateSequences(driveSequenceLen int, len int, vehicule *model.Vehicule) 
 func filterBlocks(vehicule model.Position, blocks *map[model.Position]bool) *[]model.Position {
 	b := []model.Position{}
 	for p := range *blocks {
-		if p.ManDist(vehicule) < distanceToLook {
+		if p.ManDist(vehicule) < distanceTPredict {
 			b = append(b, p)
 		}
 	}
@@ -197,7 +199,7 @@ func (s *sequence) compute(sess *session) {
 	s.positions = make([]model.Position, len(s.drives))
 	for i, d := range s.drives {
 		s.vehicule.Drive(d, sess.drivesInterval.Seconds())
-		if s.vehicule.Velocity > 13.80 {
+		if s.vehicule.Velocity > 16 {
 			s.cost += 20
 		}
 		for _, pos := range *sess.blocks {
