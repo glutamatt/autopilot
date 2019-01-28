@@ -28,9 +28,25 @@ type session struct {
 	previousDrives           []*model.Driving
 	target                   model.Position
 	blocks                   *[]model.Position
-	vehiculesFuturePositions []map[model.Position]bool
+	vehiculesFuturePositions [][]model.Position
 	sequences                []*sequence
 	costF                    costFunc
+}
+
+//optim to avoid loop over map keys
+func vehiculesFuturePositionsToSlices(vehiculesFuturePositions []map[model.Position]bool) [][]model.Position {
+	pos := make([][]model.Position, len(vehiculesFuturePositions))
+
+	for step, posMap := range vehiculesFuturePositions {
+		pos[step] = make([]model.Position, len(posMap))
+		i := 0
+		for p := range posMap {
+			pos[step][i] = p
+			i++
+		}
+	}
+
+	return pos
 }
 
 func Genetic(
@@ -44,7 +60,7 @@ func Genetic(
 	sess := session{
 		vehicule:                 vehicule,
 		blocks:                   filterBlocks(vehicule.Position, blocks),
-		vehiculesFuturePositions: vehiculesFuturePositions,
+		vehiculesFuturePositions: vehiculesFuturePositionsToSlices(vehiculesFuturePositions),
 		target:                   target,
 		costF:                    costByFarTargetDistance,
 		driveSequenceLen:         int(distanceTPredict/VehiculRadius) + 1,
@@ -208,7 +224,7 @@ func (s *sequence) compute(sess *session) {
 			}
 		}
 		if len(sess.vehiculesFuturePositions) >= i+1 {
-			for pos := range sess.vehiculesFuturePositions[i] {
+			for _, pos := range sess.vehiculesFuturePositions[i] {
 				if s.vehicule.Collide(&pos, VehiculRadius+VehiculRadius) {
 					s.cost += 100
 				}
@@ -227,14 +243,21 @@ func driveSequence(driveSequenceLen int) []*model.Driving {
 	return s
 }
 
-func gene() *model.Driving {
-	random := randomPool.Get().(*rand.Rand)
-	defer randomPool.Put(random)
-	d := &model.Driving{
-		Turning: math.Tanh(random.Float64()*2 - 1),
-		Thrust:  math.Tanh(random.Float64()*2 - 1),
+var generatedDrives []*model.Driving
+var generatedDrivesLen = 1000000
+
+func PrepareDrives() {
+	generatedDrives = make([]*model.Driving, generatedDrivesLen)
+	for i := 0; i < generatedDrivesLen; i++ {
+		generatedDrives[i] = &model.Driving{
+			Turning: math.Tanh(rand.Float64()*2 - 1),
+			Thrust:  math.Tanh(rand.Float64()*2 - 1),
+		}
 	}
-	return d
+}
+
+func gene() *model.Driving {
+	return generatedDrives[rand.Intn(generatedDrivesLen)]
 }
 
 //Extrapol the future positions of the vehicule from future drivings

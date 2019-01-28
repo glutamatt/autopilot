@@ -71,6 +71,7 @@ func main() {
 	vehicules := []*vehiculeManager{}
 	geom.SetMinTurningRadius(minTurningRadius)
 	geom.SetAdherenceMax(adherenceMax)
+	ia.PrepareDrives()
 	geom.BoostMax = boostMax
 	geom.SecurityDistance = securityDistance
 	geom.BreakMax = breakMax
@@ -82,6 +83,7 @@ func main() {
 	graphics.PepareWheel()
 	geom.InitPathTiles(blockBorder, groundWidth, groundHeight)
 	graphics.InitBlockImage()
+	ia.PrepareDrives()
 	ia.BlocRadius = geom.InitRadiusBlock(blockBorder)
 	ia.VehiculRadius = geom.InitRadiusCar(carWidth, carHeight)
 
@@ -103,7 +105,7 @@ func main() {
 	update := func(screen *ebiten.Image) error {
 		select {
 		case <-spawner.C:
-			if len(spots) > 1 && len(vehicules) < 13 {
+			if len(spots) > 1 && len(vehicules) < 20 {
 				from, to := spotPositions(spots, false)
 				if freePlace(vehicules, from) {
 					vehicules = append(vehicules, createVehiculeManager(from, to))
