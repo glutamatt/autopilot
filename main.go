@@ -1,10 +1,14 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"image/color"
+	"log"
 	"math"
 	"math/rand"
+	"os"
+	"runtime/pprof"
 	"sync"
 	"time"
 
@@ -46,6 +50,23 @@ func createVehiculeManager(from, to geom.Position) *vehiculeManager {
 }
 
 func main() {
+	var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to `file`")
+	flag.Parse()
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatal("could not create CPU profile: ", err)
+		}
+		if err := pprof.StartCPUProfile(f); err != nil {
+			log.Fatal("could not start CPU profile: ", err)
+		}
+		log.Println("pprof.StartCPUProfile")
+		go func() {
+			time.Sleep(20 * time.Second)
+			pprof.StopCPUProfile()
+			log.Println("Profiuling Done")
+		}()
+	}
 
 	vehicules := []*vehiculeManager{}
 	geom.SetMinTurningRadius(minTurningRadius)
@@ -82,14 +103,17 @@ func main() {
 	update := func(screen *ebiten.Image) error {
 		select {
 		case <-spawner.C:
-			if len(spots) > 1 && len(vehicules) < 25 {
+			if len(spots) > 1 && len(vehicules) < 13 {
 				from, to := spotPositions(spots, false)
-				vehicules = append(vehicules, createVehiculeManager(from, to))
-				spawner = time.NewTimer(spawneFreq / time.Duration(len(spots)/2))
+				if freePlace(vehicules, from) {
+					vehicules = append(vehicules, createVehiculeManager(from, to))
+					spawner = time.NewTimer(spawneFreq / time.Duration(len(spots)/2))
+				} else {
+					spawner = time.NewTimer(time.Second)
+				}
 			} else {
-				spawner = time.NewTimer(spawneFreq)
+				spawner = time.NewTimer(time.Second)
 			}
-
 		default:
 		}
 
@@ -287,6 +311,16 @@ func getBlocksAndCars(blocks map[geom.Position]bool, vehicules []*vehiculeManage
 		}
 	}
 	return &newBlocks
+}
+
+func freePlace(vehicules []*vehiculeManager, place geom.Position) bool {
+	for _, v := range vehicules {
+		if v.vehicule.Position.ManDist(place) < carWidth {
+			return false
+			break
+		}
+	}
+	return true
 }
 
 /*
