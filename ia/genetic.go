@@ -223,7 +223,7 @@ func (s *sequence) compute(sess *session) {
 				s.cost += 100
 			}
 		}
-		if len(sess.vehiculesFuturePositions) >= i+1 {
+		if i < len(sess.vehiculesFuturePositions) {
 			for _, pos := range sess.vehiculesFuturePositions[i] {
 				if s.vehicule.Collide(&pos, VehiculRadius+VehiculRadius) {
 					s.cost += 100
