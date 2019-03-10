@@ -12,6 +12,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/glutamatt/autopilot/generator"
+
 	"github.com/glutamatt/autopilot/ia"
 
 	"github.com/glutamatt/autopilot/graphics"
@@ -98,11 +100,17 @@ func main() {
 		blocks[*p] = true
 		graphics.DrawBlock(p, blocksImage)
 	}
+
+	generator.Init(blocks)
+
 	vehiculeImage.Fill(color.NRGBA{0xFF, 0xFF, 0xFF, 0xff})
 
 	spawner := time.NewTimer(7 * time.Second)
 
 	update := func(screen *ebiten.Image) error {
+
+		generator.NewFrame()
+
 		select {
 		case <-spawner.C:
 			if len(spots) > 1 && len(vehicules) < 20 {
@@ -176,6 +184,7 @@ func main() {
 				default:
 				}
 				if v.futureDrives != nil {
+					generator.AddVehicule(v.vehicule, v.Target(), v.futureDrives[0])
 					v.vehicule.Drive(v.futureDrives[0], 1.0/60)
 				}
 			}(v, iv)
@@ -195,8 +204,8 @@ func main() {
 		for i, iv := range vehicules {
 			if !arrived[i] {
 				remainingV = append(remainingV, iv)
-				//graphics.DrawPath(screen, iv.futurePositions...) // DEBUG print future positions
-				//graphics.DrawPath(screen, iv.Target())           // DEBUG print future positions
+				graphics.DrawPath(screen, iv.futurePositions...) // DEBUG print future positions
+				graphics.DrawPath(screen, iv.Target())           // DEBUG print future positions
 			} else {
 				iv.pathTicker.Stop()
 				iv.iaTicker.Stop()
