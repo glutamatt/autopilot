@@ -9,12 +9,17 @@ import (
 	"github.com/glutamatt/autopilot/model"
 )
 
+/*
+!!!!!!!!!!!!!!!!!!!!!!
+ANALYSER UN BOUNDING BOX BASEE SUR LA VISIBILITE AVANT DE LA VOITURE
+!!!!!!!!!!!!!!!!!!!!!!
+*/
 var gameBlocks map[model.Position]bool
 var chanFrame chan struct{}
 var chanVehicule chan vehiculeState
-var outputDistance = 36.0
+var outputDistance = 42.0
 var finalOutDistance = math.Sqrt(outputDistance * outputDistance * 2)
-var metersPerIndex = 2.5
+var metersPerIndex = 5.0
 var indicesPerRow = int(finalOutDistance*2/metersPerIndex) + 1
 
 type outputLine struct {
