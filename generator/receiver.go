@@ -9,18 +9,12 @@ import (
 	"github.com/glutamatt/autopilot/model"
 )
 
-/*
-!!!!!!!!!!!!!!!!!!!!!!
-ANALYSER UN BOUNDING BOX BASEE SUR LA VISIBILITE AVANT DE LA VOITURE
-!!!!!!!!!!!!!!!!!!!!!!
-*/
 var gameBlocks map[model.Position]bool
 var chanFrame chan struct{}
 var chanVehicule chan vehiculeState
-var outputDistance = 42.0
-var finalOutDistance = math.Sqrt(outputDistance * outputDistance * 2)
+var sightDistance = 100.0
 var metersPerIndex = 5.0
-var indicesPerRow = int(finalOutDistance*2/metersPerIndex) + 1
+var indicesPerRow = int(sightDistance/metersPerIndex) + 2
 
 type outputLine struct {
 	current vehiculeState
@@ -29,8 +23,7 @@ type outputLine struct {
 }
 
 func posToIndices(p model.Position) (int, int) {
-	p.X += finalOutDistance
-	p.Y -= finalOutDistance
+	p.Y -= sightDistance / 2
 	p.Y *= -1
 	x := int(p.X / metersPerIndex)
 	if math.Mod(p.X, metersPerIndex) > metersPerIndex/2 {
@@ -83,6 +76,7 @@ func (o outputLine) Floats() []float64 {
 	}
 	for p := range o.blocks {
 		x, y := posToIndices(p)
+		fmt.Printf("indicesPerRow %d : p.Y %.2f  p.X %.2f y %d  x %d\n", indicesPerRow, p.Y, p.X, y, x)
 		blocks[y][x] = true
 	}
 	for _, r := range blocks {
@@ -138,10 +132,13 @@ func processVehicule(vehiculeIndex int, vehicules []vehiculeState) outputLine {
 	for p := range filterCloseBlocks(vC.vehicule.Position, gameBlocks) {
 		p.X -= vC.vehicule.X
 		p.Y -= vC.vehicule.Y
-		output.blocks[model.Position{
+		p := model.Position{
 			X: p.X*cos - p.Y*sin,
 			Y: p.X*sin + p.Y*cos,
-		}] = true
+		}
+		if isInOutputRange(p) {
+			output.blocks[p] = true
+		}
 	}
 	output.others = make(map[model.Position]vehiculeState, len(vehicules)-1)
 	for _, vO := range filterCloseVehicules(vC.vehicule.Position, vehiculeIndex, vehicules) {
@@ -152,9 +149,11 @@ func processVehicule(vehiculeIndex int, vehicules []vehiculeState) outputLine {
 		vO.vehicule.Rotation -= vC.vehicule.Rotation
 		vO.vehicule.X, vO.vehicule.Y = vO.vehicule.X*cos-vO.vehicule.Y*sin, vO.vehicule.X*sin+vO.vehicule.Y*cos
 		vO.target.X, vO.target.Y = vO.target.X*cos-vO.target.Y*sin, vO.target.X*sin+vO.target.Y*cos
-		output.others[vO.vehicule.Position] = vO
+		if isInOutputRange(vO.vehicule.Position) {
+			output.others[vO.vehicule.Position] = vO
+		}
 	}
-	//fmt.Printf("%#v\n", output.Strings())
+
 	return output
 }
 
@@ -174,10 +173,19 @@ func saveVehicules(vehicules []vehiculeState) {
 	}
 }
 
+func isInWideRange(from, to model.Position) bool {
+	return math.Abs(from.X-to.X) <= sightDistance && math.Abs(from.Y-to.Y) <= sightDistance
+}
+
+func isInOutputRange(p model.Position) bool {
+	return p.X > 0 && p.X <= sightDistance &&
+		math.Abs(p.Y) <= sightDistance/2
+}
+
 func filterCloseVehicules(base model.Position, baseIndex int, vehicules []vehiculeState) []vehiculeState {
 	m := []vehiculeState{}
 	for i, p := range vehicules {
-		if baseIndex != i && p.vehicule.Position.ManDist(base) <= outputDistance {
+		if baseIndex != i && isInWideRange(p.vehicule.Position, base) {
 			m = append(m, p)
 		}
 	}
@@ -187,7 +195,7 @@ func filterCloseVehicules(base model.Position, baseIndex int, vehicules []vehicu
 func filterCloseBlocks(base model.Position, b map[model.Position]bool) map[model.Position]bool {
 	m := map[model.Position]bool{}
 	for p := range b {
-		if p.ManDist(base) <= outputDistance {
+		if isInWideRange(p, base) {
 			m[p] = true
 		}
 	}
