@@ -43,11 +43,11 @@ func posToIndices(p model.Position) (int, int) {
 	return x, y
 }
 
-func (o outputLine) Strings() []string {
-	line := []string{}
-	line = append(line, fmt.Sprint(o.current.vehicule.Velocity))
-	line = append(line, fmt.Sprint(o.current.target.X))
-	line = append(line, fmt.Sprint(o.current.target.Y))
+func (o outputLine) Floats() []float64 {
+	line := []float64{}
+	line = append(line, o.current.vehicule.Velocity)
+	line = append(line, o.current.target.X)
+	line = append(line, o.current.target.Y)
 
 	//add others
 	others := make([][]*vehiculeState, indicesPerRow)
@@ -61,19 +61,19 @@ func (o outputLine) Strings() []string {
 	for _, r := range others {
 		for _, v := range r {
 			if v == nil {
-				line = append(line, "0.0")
-				line = append(line, "0.0")
-				line = append(line, "0.0")
-				line = append(line, "0.0")
-				line = append(line, "0.0")
-				line = append(line, "0.0")
+				line = append(line, 0)
+				line = append(line, 0)
+				line = append(line, 0)
+				line = append(line, 0)
+				line = append(line, 0)
+				line = append(line, 0)
 			} else {
-				line = append(line, fmt.Sprint(v.drive.Turning))
-				line = append(line, fmt.Sprint(v.drive.Thrust))
-				line = append(line, fmt.Sprint(v.vehicule.Velocity))
-				line = append(line, fmt.Sprint(v.vehicule.Rotation))
-				line = append(line, fmt.Sprint(v.target.X))
-				line = append(line, fmt.Sprint(v.target.Y))
+				line = append(line, v.drive.Turning)
+				line = append(line, v.drive.Thrust)
+				line = append(line, v.vehicule.Velocity)
+				line = append(line, v.vehicule.Rotation)
+				line = append(line, v.target.X)
+				line = append(line, v.target.Y)
 			}
 		}
 	}
@@ -88,15 +88,15 @@ func (o outputLine) Strings() []string {
 	for _, r := range blocks {
 		for _, b := range r {
 			if b {
-				line = append(line, "0.99")
+				line = append(line, 1)
 			} else {
-				line = append(line, "0")
+				line = append(line, 0)
 			}
 		}
 	}
 
-	line = append(line, fmt.Sprint(o.current.drive.Turning))
-	line = append(line, fmt.Sprint(o.current.drive.Thrust))
+	line = append(line, o.current.drive.Turning)
+	line = append(line, o.current.drive.Thrust)
 
 	return line
 }
@@ -164,7 +164,12 @@ func saveVehicules(vehicules []vehiculeState) {
 	}
 	w := csv.NewWriter(os.Stderr)
 	for iC := range vehicules {
-		w.Write(processVehicule(iC, vehicules).Strings())
+		floats := processVehicule(iC, vehicules).Floats()
+		str := make([]string, len(floats))
+		for i, f := range floats {
+			str[i] = fmt.Sprint(f)
+		}
+		w.Write(str)
 		w.Flush()
 	}
 }
