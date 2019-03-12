@@ -5,6 +5,11 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"time"
+
+	"github.com/hajimehoshi/ebiten"
+
+	"github.com/glutamatt/autopilot/generator/graphics"
 
 	"github.com/glutamatt/autopilot/model"
 )
@@ -15,6 +20,7 @@ var chanVehicule chan vehiculeState
 var sightDistance = 100.0
 var metersPerIndex = 5.0
 var indicesPerRow = int(sightDistance/metersPerIndex) + 2
+var debugVisu chan *ebiten.Image
 
 type outputLine struct {
 	current vehiculeState
@@ -76,7 +82,6 @@ func (o outputLine) Floats() []float64 {
 	}
 	for p := range o.blocks {
 		x, y := posToIndices(p)
-		fmt.Printf("indicesPerRow %d : p.Y %.2f  p.X %.2f y %d  x %d\n", indicesPerRow, p.Y, p.X, y, x)
 		blocks[y][x] = true
 	}
 	for _, r := range blocks {
@@ -96,15 +101,18 @@ func (o outputLine) Floats() []float64 {
 }
 
 type vehiculeState struct {
+	index    int
 	vehicule model.Vehicule
 	target   model.Position
 	drive    model.Driving
 }
 
-func Init(blocks map[model.Position]bool) {
+func Init(blocks map[model.Position]bool) chan *ebiten.Image {
 	gameBlocks = blocks
 	chanFrame = make(chan struct{})
 	chanVehicule = make(chan vehiculeState)
+	graphics.InitConstants(100, sightDistance, indicesPerRow)
+	debugVisu = make(chan *ebiten.Image)
 
 	go func() {
 		vehicules := []vehiculeState{}
@@ -118,6 +126,8 @@ func Init(blocks map[model.Position]bool) {
 			}
 		}
 	}()
+
+	return debugVisu
 }
 
 func processVehicule(vehiculeIndex int, vehicules []vehiculeState) outputLine {
@@ -163,8 +173,20 @@ func saveVehicules(vehicules []vehiculeState) {
 	}
 	w := csv.NewWriter(os.Stderr)
 	for iC := range vehicules {
+		if vehicules[iC].index != 0 {
+			continue
+		}
 		floats := processVehicule(iC, vehicules).Floats()
 		str := make([]string, len(floats))
+		img, err := graphics.DrawExport(floats)
+		if err == nil {
+			go func(img *ebiten.Image) {
+				select {
+				case debugVisu <- img:
+				case <-time.After(50 * time.Millisecond):
+				}
+			}(img)
+		}
 		for i, f := range floats {
 			str[i] = fmt.Sprint(f)
 		}
@@ -206,9 +228,10 @@ func NewFrame() {
 	chanFrame <- struct{}{}
 }
 
-func AddVehicule(vehicule *model.Vehicule, target model.Position, drive *model.Driving) {
+func AddVehicule(iv int, vehicule *model.Vehicule, target model.Position, drive *model.Driving) {
 	v := *vehicule
 	chanVehicule <- vehiculeState{
+		index:    iv,
 		vehicule: v,
 		target:   target,
 		drive:    *drive,

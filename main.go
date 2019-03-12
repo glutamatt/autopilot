@@ -101,7 +101,7 @@ func main() {
 		graphics.DrawBlock(p, blocksImage)
 	}
 
-	generator.Init(blocks)
+	debugExport := generator.Init(blocks)
 
 	vehiculeImage.Fill(color.NRGBA{0xFF, 0xFF, 0xFF, 0xff})
 
@@ -184,7 +184,7 @@ func main() {
 				default:
 				}
 				if v.futureDrives != nil {
-					generator.AddVehicule(v.vehicule, v.Target(), v.futureDrives[0])
+					generator.AddVehicule(iv, v.vehicule, v.Target(), v.futureDrives[0])
 					v.vehicule.Drive(v.futureDrives[0], 1.0/60)
 				}
 			}(v, iv)
@@ -245,6 +245,14 @@ func main() {
 			}
 		}
 
+		select {
+		case d := <-debugExport:
+			debugOpt := &ebiten.DrawImageOptions{}
+			debugOpt.GeoM.Translate(groundWidth*uiScale-100, 0)
+			screen.DrawImage(d, debugOpt)
+		default:
+		}
+
 		if len(vehicules) > 0 {
 			ebitenutil.DebugPrint(screen, fmt.Sprintf(
 				"pos: %.1f:%.1f\n%.1f km/h\n%.2f°\nfps:%.0f\nvcount: %d",
@@ -254,7 +262,7 @@ func main() {
 		return nil
 	}
 
-	if err := ebiten.Run(update, groundWidth*uiScale, groundHeight*uiScale, 2, "Drive my crazy!"); err != nil {
+	if err := ebiten.Run(update, groundWidth*uiScale, groundHeight*uiScale, 1.5, "Drive my crazy!"); err != nil {
 		panic(err)
 	}
 }
