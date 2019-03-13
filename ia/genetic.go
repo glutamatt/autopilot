@@ -17,7 +17,7 @@ var randomPool = sync.Pool{
 }
 
 var distanceTPredict = 30.0
-var angleOkThreshold = math.Pi / 6
+var cosAngleOkThreshold = .5
 var VehiculRadius float64
 var BlocRadius float64
 
@@ -67,14 +67,8 @@ func Genetic(
 		drivesInterval:           driveInterval(vehicule.Velocity),
 	}
 
-	anglePosition := vehicule.Position.Angle(target)
-	angleToCheck := math.Abs(math.Mod(vehicule.Rotation, 2*math.Pi) - anglePosition)
-	if angleToCheck > math.Pi {
-		angleToCheck = (2 * math.Pi) - angleToCheck
-	}
-
-	if vehicule.Velocity < 1.5 && angleToCheck > angleOkThreshold {
-		sess.costF = costByAngleToTarget(vehicule, anglePosition)
+	if vehicule.Velocity < 1.5 && math.Cos(vehicule.Position.Angle(target)-vehicule.Rotation) < cosAngleOkThreshold {
+		sess.costF = costByCosAngleToTarget(vehicule.Velocity)
 	}
 
 	sess.sequences = generateSequences(sess.driveSequenceLen, 200, vehicule)
@@ -97,20 +91,15 @@ func Genetic(
 	}
 }
 
-func costByAngleToTarget(vehicule *model.Vehicule, anglePositions float64) costFunc {
+func costByCosAngleToTarget(velocity float64) costFunc {
 	return func(s *sequence, target model.Position) float64 {
 		invert := 0.0
-		if (vehicule.Velocity < 0 && s.drives[0].Thrust > 0) || (vehicule.Velocity > 0 && s.drives[0].Thrust < 0) {
-			invert = 20
+		if (velocity < 0 && s.vehicule.Velocity > velocity) || (velocity > 0 && s.vehicule.Velocity < velocity) {
+			invert = 1
 		}
-		angle := math.Abs(math.Mod(s.vehicule.Rotation, 2*math.Pi) - anglePositions)
-		if angle > math.Pi {
-			angle = (2 * math.Pi) - angle
-		}
-		return angle + invert
+		return -math.Cos(s.vehicule.Position.Angle(target)-s.vehicule.Rotation) + 1 + invert
 	}
 }
-
 func driveInterval(velocity float64) time.Duration {
 	if velocity < 0 {
 		velocity *= -1
