@@ -45,8 +45,8 @@ func posToIndices(p model.Position) (int, int) {
 func (o outputLine) Floats() []float64 {
 	line := []float64{}
 	line = append(line, o.current.vehicule.Velocity)
-	line = append(line, o.current.target.X)
-	line = append(line, o.current.target.Y)
+	line = append(line, o.current.target.X/sightDistance)
+	line = append(line, o.current.target.Y/sightDistance)
 
 	//add others
 	others := make([][]*vehiculeState, indicesPerRow)
@@ -71,8 +71,8 @@ func (o outputLine) Floats() []float64 {
 				line = append(line, v.drive.Thrust)
 				line = append(line, v.vehicule.Velocity)
 				line = append(line, v.vehicule.Rotation)
-				line = append(line, v.target.X)
-				line = append(line, v.target.Y)
+				line = append(line, v.target.X/sightDistance)
+				line = append(line, v.target.Y/sightDistance)
 			}
 		}
 	}

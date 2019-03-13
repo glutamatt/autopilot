@@ -39,7 +39,7 @@ func DrawExport(export []float64) (*ebiten.Image, error) {
 
 	opts := &ebiten.DrawImageOptions{}
 	opts.GeoM.Translate(float64(visualizationSize/targetRatioSize)/-2, float64(visualizationSize/targetRatioSize)/-2)
-	opts.GeoM.Translate(export[1]*visuRatio, export[2]*visuRatio*-1+sightDistance/2)
+	opts.GeoM.Translate(export[1]*visuRatio*sightDistance, export[2]*sightDistance*visuRatio*-1+sightDistance/2)
 	img.DrawImage(targetImg, opts)
 
 	wallOffset := 3 + 6*indicesPerRow*indicesPerRow
