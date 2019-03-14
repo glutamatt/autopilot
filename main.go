@@ -88,6 +88,7 @@ func main() {
 	ia.PrepareDrives()
 	ia.BlocRadius = geom.InitRadiusBlock(blockBorder)
 	ia.VehiculRadius = geom.InitRadiusCar(carWidth, carHeight)
+	var debugVisuImg *ebiten.Image
 
 	blocks := make(map[geom.Position]bool)
 	spots := map[geom.Position]int{}
@@ -246,11 +247,13 @@ func main() {
 		}
 
 		select {
-		case d := <-debugExport:
+		case debugVisuImg = <-debugExport:
+		default:
+		}
+		if debugVisuImg != nil {
 			debugOpt := &ebiten.DrawImageOptions{}
 			debugOpt.GeoM.Translate(groundWidth*uiScale-100, 0)
-			screen.DrawImage(d, debugOpt)
-		default:
+			screen.DrawImage(debugVisuImg, debugOpt)
 		}
 
 		if len(vehicules) > 0 {

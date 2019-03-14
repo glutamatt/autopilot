@@ -113,14 +113,43 @@ func Init(blocks map[model.Position]bool) chan *ebiten.Image {
 	chanVehicule = make(chan vehiculeState)
 	graphics.InitConstants(100, sightDistance, indicesPerRow)
 	debugVisu = make(chan *ebiten.Image)
-
+	dataFilePath := os.TempDir() + string(os.PathSeparator) + time.Now().Format("autopilot_2006_01_02__15_04_05.csv")
+	dataFile, err := os.Create(dataFilePath)
+	if err != nil {
+		panic(fmt.Errorf("Unable to create the data file %s : %v", dataFilePath, err))
+	}
+	csvWriter := csv.NewWriter(dataFile)
+	flushTimer := time.Tick(3 * time.Second)
+	saveTimer := time.Tick(200 * time.Millisecond)
 	go func() {
 		vehicules := []vehiculeState{}
 		for {
 			select {
+			case <-flushTimer:
+				csvWriter.Flush()
 			case <-chanFrame:
-				saveVehicules(vehicules)
-				vehicules = []vehiculeState{}
+				if len(vehicules) > 0 {
+					select {
+					case <-saveTimer:
+						saveVehicules(vehicules, csvWriter)
+					default:
+					}
+					for i, v := range vehicules {
+						if v.index == 0 {
+							if img, err := graphics.DrawExport(processVehicule(i, vehicules).Floats()); err == nil {
+								go func(img *ebiten.Image) {
+									select {
+									case debugVisu <- img:
+									case <-time.After(time.Second / 30):
+									}
+								}(img)
+							}
+							break
+						}
+					}
+
+					vehicules = []vehiculeState{}
+				}
 			case v := <-chanVehicule:
 				vehicules = append(vehicules, v)
 			}
@@ -167,31 +196,17 @@ func processVehicule(vehiculeIndex int, vehicules []vehiculeState) outputLine {
 	return output
 }
 
-func saveVehicules(vehicules []vehiculeState) {
+func saveVehicules(vehicules []vehiculeState, csvWriter *csv.Writer) {
 	if len(vehicules) == 0 {
 		return
 	}
-	w := csv.NewWriter(os.Stderr)
 	for iC := range vehicules {
-		if vehicules[iC].index != 0 {
-			continue
-		}
 		floats := processVehicule(iC, vehicules).Floats()
 		str := make([]string, len(floats))
-		img, err := graphics.DrawExport(floats)
-		if err == nil {
-			go func(img *ebiten.Image) {
-				select {
-				case debugVisu <- img:
-				case <-time.After(50 * time.Millisecond):
-				}
-			}(img)
-		}
 		for i, f := range floats {
 			str[i] = fmt.Sprint(f)
 		}
-		w.Write(str)
-		w.Flush()
+		csvWriter.Write(str)
 	}
 }
 
