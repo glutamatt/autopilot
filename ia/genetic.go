@@ -17,7 +17,7 @@ var randomPool = sync.Pool{
 }
 
 var distanceTPredict = 30.0
-var cosAngleOkThreshold = .5
+var cosAngleOkThreshold = .8
 var VehiculRadius float64
 var BlocRadius float64
 
