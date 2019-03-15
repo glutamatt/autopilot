@@ -17,7 +17,8 @@ import (
 var gameBlocks map[model.Position]bool
 var chanFrame chan struct{}
 var chanVehicule chan vehiculeState
-var sightDistance = 100.0
+var sightDistance = 80.0
+var rearDistance = 15.0
 var metersPerIndex = 5.0
 var indicesPerRow = int(sightDistance/metersPerIndex) + 2
 var debugVisu chan *ebiten.Image
@@ -29,6 +30,7 @@ type outputLine struct {
 }
 
 func posToIndices(p model.Position) (int, int) {
+	p.X += rearDistance
 	p.Y -= sightDistance / 2
 	p.Y *= -1
 	x := int(p.X / metersPerIndex)
@@ -111,7 +113,7 @@ func Init(blocks map[model.Position]bool) chan *ebiten.Image {
 	gameBlocks = blocks
 	chanFrame = make(chan struct{})
 	chanVehicule = make(chan vehiculeState)
-	graphics.InitConstants(100, sightDistance, indicesPerRow)
+	graphics.InitConstants(100, sightDistance, rearDistance, indicesPerRow)
 	debugVisu = make(chan *ebiten.Image)
 	dataFilePath := os.TempDir() + string(os.PathSeparator) + time.Now().Format("autopilot_2006_01_02__15_04_05.csv")
 	dataFile, err := os.Create(dataFilePath)
@@ -215,7 +217,8 @@ func isInWideRange(from, to model.Position) bool {
 }
 
 func isInOutputRange(p model.Position) bool {
-	return p.X > 0 && p.X <= sightDistance &&
+	return p.X >= -rearDistance &&
+		p.X <= (sightDistance-rearDistance) &&
 		math.Abs(p.Y) <= sightDistance/2
 }
 

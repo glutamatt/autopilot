@@ -13,15 +13,17 @@ var targetImg *ebiten.Image
 var wallImg *ebiten.Image
 var carImg *ebiten.Image
 var sightDistance float64
+var rearDistance float64
 var targetRatioSize = 20
 var wallRatioSize = 25
 var carRatioSize = 20
 var visuRatio float64
 var indicesPerRow int
 
-func InitConstants(visualSize int, sightSize float64, mapSize int) {
+func InitConstants(visualSize int, sightSize, rearSize float64, mapSize int) {
 	visualizationSize = visualSize
 	sightDistance = sightSize
+	rearDistance = rearSize
 	visuRatio = float64(visualizationSize) / sightDistance
 	indicesPerRow = mapSize
 
@@ -39,7 +41,13 @@ func DrawExport(export []float64) (*ebiten.Image, error) {
 
 	opts := &ebiten.DrawImageOptions{}
 	opts.GeoM.Translate(float64(visualizationSize/targetRatioSize)/-2, float64(visualizationSize/targetRatioSize)/-2)
-	opts.GeoM.Translate(export[1]*visuRatio*sightDistance, export[2]*sightDistance*visuRatio*-1+sightDistance/2)
+	opts.GeoM.Translate(rearDistance*visuRatio, sightDistance/2*visuRatio)
+	opts.ColorM.Apply(color.Black)
+	img.DrawImage(carImg, opts)
+
+	opts = &ebiten.DrawImageOptions{}
+	opts.GeoM.Translate(float64(visualizationSize/targetRatioSize)/-2, float64(visualizationSize/targetRatioSize)/-2)
+	opts.GeoM.Translate((export[1]*sightDistance+rearDistance)*visuRatio, export[2]*sightDistance*visuRatio*-1+sightDistance/2*visuRatio)
 	img.DrawImage(targetImg, opts)
 
 	wallOffset := 3 + 6*indicesPerRow*indicesPerRow
