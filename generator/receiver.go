@@ -57,7 +57,8 @@ func (o outputLine) Floats() []float64 {
 	}
 	for p, v := range o.others {
 		x, y := posToIndices(p)
-		others[y][x] = &v
+		vCopy := v
+		others[y][x] = &vCopy
 	}
 	for _, r := range others {
 		for _, v := range r {
