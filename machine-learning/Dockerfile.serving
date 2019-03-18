@@ -1,0 +1,30 @@
+FROM tensorflow/serving:1.11.1-devel as build_image
+FROM ubuntu:16.04
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY --from=build_image /usr/local/bin/tensorflow_model_server /usr/bin/tensorflow_model_server
+
+# gRPC
+EXPOSE 8500
+# REST
+EXPOSE 8501
+
+ENV MODEL_BASE_PATH=/models
+RUN mkdir -p ${MODEL_BASE_PATH}
+WORKDIR  ${MODEL_BASE_PATH}
+ENV MODEL_NAME=first_try
+
+COPY models/export/${MODEL_NAME} ${MODEL_NAME}
+
+RUN echo '#!/bin/bash \n\n\
+tensorflow_model_server  --rest_api_port=8501 \
+--model_name=${MODEL_NAME} --model_base_path=${MODEL_BASE_PATH}/${MODEL_NAME} \
+"$@"' > /usr/bin/tf_serving_entrypoint.sh \
+&& chmod +x /usr/bin/tf_serving_entrypoint.sh
+
+CMD ["/usr/bin/tf_serving_entrypoint.sh"]
