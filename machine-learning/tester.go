@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -13,9 +14,12 @@ import (
 )
 
 func main() {
-
+	if len(os.Args) < 3 {
+		panic("usage: command model_name model_version")
+	}
+	model, version := os.Args[1], os.Args[2]
 	lines := readDataFile("data/autopilot_2019_03_18__13_20_22.csv")
-	serviceURL := "http://localhost:8501/v1/models/first_try/versions/1:predict"
+	serviceURL := fmt.Sprintf("http://localhost:8501/v1/models/%s/versions/%s:predict", model, version)
 
 	body, err := json.Marshal(&Req{
 		SignatureName: "raw",

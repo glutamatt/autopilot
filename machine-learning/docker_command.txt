@@ -1,5 +1,5 @@
 docker build --tag autopilot .
-docker run -it --rm -v /home/matt/Documents/autopilot/:/tf/notebooks -p 8888:8888 autopilot
+docker run -it --rm -v `pwd`:/tf/notebooks -p 8888:8888 autopilot
 
 docker build --file Dockerfile.serving . --tag tfservring
 docker run -p 8501:8501 tfservring
