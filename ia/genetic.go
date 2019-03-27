@@ -239,8 +239,8 @@ func PrepareDrives() {
 	generatedDrives = make([]*model.Driving, generatedDrivesLen)
 	for i := 0; i < generatedDrivesLen; i++ {
 		generatedDrives[i] = &model.Driving{
-			Turning: math.Tanh(rand.Float64()*2 - 1),
-			Thrust:  math.Tanh(rand.Float64()*2 - 1),
+			Turning: rand.Float64()*2 - 1,
+			Thrust:  rand.Float64()*2 - 1,
 		}
 	}
 }
