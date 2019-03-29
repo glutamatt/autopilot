@@ -205,8 +205,8 @@ func main() {
 		for i, iv := range vehicules {
 			if !arrived[i] {
 				remainingV = append(remainingV, iv)
-				graphics.DrawPath(screen, iv.futurePositions...) // DEBUG print future positions
-				graphics.DrawPath(screen, iv.Target())           // DEBUG print future positions
+				//graphics.DrawPath(screen, iv.futurePositions...) // DEBUG print future positions
+				graphics.DrawPath(screen, iv.Target()) // DEBUG print future positions
 			} else {
 				iv.pathTicker.Stop()
 				iv.iaTicker.Stop()
@@ -285,7 +285,7 @@ func (v *vehiculeManager) Target() geom.Position {
 		return geom.Position{}
 	}
 	vel := math.Max(v.vehicule.Velocity, 0)
-	i := int(vel*5/13.8 + 3)
+	i := int(vel*4/13.8 + 3)
 	if i > len(v.pathFound) {
 		i = len(v.pathFound)
 	}
