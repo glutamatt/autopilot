@@ -12,11 +12,12 @@ var visualizationSize int
 var targetImg *ebiten.Image
 var wallImg *ebiten.Image
 var carImg *ebiten.Image
+var rotateImg *ebiten.Image
 var sightDistance float64
 var rearDistance float64
-var targetRatioSize = 20
-var wallRatioSize = 25
-var carRatioSize = 20
+var targetRatioSize = 30
+var wallRatioSize = 30
+var carRatioSize = 30
 var visuRatio float64
 var indicesPerRow int
 
@@ -33,6 +34,8 @@ func InitConstants(visualSize int, sightSize, rearSize float64, mapSize int) {
 	wallImg.Fill(color.NRGBA{0xCC, 0xCC, 0xCC, 0xff})
 	carImg, _ = ebiten.NewImage(visualizationSize/carRatioSize, visualizationSize/carRatioSize, ebiten.FilterDefault)
 	carImg.Fill(color.NRGBA{0x22, 0x22, 0xEE, 0xff})
+	rotateImg, _ = ebiten.NewImage(visualizationSize/carRatioSize*3, 1, ebiten.FilterDefault)
+	rotateImg.Fill(color.Black)
 }
 
 func DrawExport(export []float64) (*ebiten.Image, error) {
@@ -70,7 +73,9 @@ func DrawExport(export []float64) (*ebiten.Image, error) {
 			p := iToPos(i)
 			opts := &ebiten.DrawImageOptions{}
 			opts.GeoM.Translate(float64(visualizationSize/carRatioSize)/-2, float64(visualizationSize/carRatioSize)/-2)
+			opts.GeoM.Rotate(export[3+i*6+3] * -1)
 			opts.GeoM.Translate(p.X*visuRatio, p.Y*visuRatio)
+			img.DrawImage(rotateImg, opts)
 			img.DrawImage(carImg, opts)
 		}
 	}
