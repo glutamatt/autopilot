@@ -15,9 +15,9 @@ var carImg *ebiten.Image
 var rotateImg *ebiten.Image
 var sightDistance float64
 var rearDistance float64
-var targetRatioSize = 30
+var targetRatioSize = 20
 var wallRatioSize = 30
-var carRatioSize = 30
+var carRatioSize = 25
 var visuRatio float64
 var indicesPerRow int
 

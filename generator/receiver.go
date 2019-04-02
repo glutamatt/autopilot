@@ -19,7 +19,7 @@ var chanFrame chan struct{}
 var chanVehicule chan vehiculeState
 var sightDistance = 80.0
 var rearDistance = 15.0
-var metersPerIndex = 2.0
+var metersPerIndex = 4.99
 var indicesPerRow = int(sightDistance/metersPerIndex) + 2
 var debugVisu chan *ebiten.Image
 
