@@ -44,9 +44,11 @@ func DrawExport(export []float64) (*ebiten.Image, error) {
 
 	opts := &ebiten.DrawImageOptions{}
 	opts.GeoM.Translate(float64(visualizationSize/targetRatioSize)/-2, float64(visualizationSize/targetRatioSize)/-2)
+	opts.GeoM.Rotate(export[len(export)-2] * -1)
 	opts.GeoM.Translate(rearDistance*visuRatio, sightDistance/2*visuRatio)
 	opts.ColorM.Apply(color.Black)
 	img.DrawImage(carImg, opts)
+	img.DrawImage(rotateImg, opts)
 
 	opts = &ebiten.DrawImageOptions{}
 	opts.GeoM.Translate(float64(visualizationSize/targetRatioSize)/-2, float64(visualizationSize/targetRatioSize)/-2)
