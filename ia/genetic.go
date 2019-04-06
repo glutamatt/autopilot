@@ -220,7 +220,7 @@ func (s *sequence) compute(sess *session) {
 			}
 		}
 		s.positions[i] = s.vehicule.Position
-		s.cost += sess.costF(s, sess.target)
+		s.cost += sess.costF(s, sess.target) / (float64(i) + 1)
 	}
 }
 
