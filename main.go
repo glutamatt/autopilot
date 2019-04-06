@@ -204,6 +204,9 @@ func main() {
 		remainingV := []*vehiculeManager{}
 		for i, iv := range vehicules {
 			if !arrived[i] {
+				if i == 0 && iv.futureDrives != nil && len(iv.futureDrives) > 0 {
+					graphics.SetWheelRotation(iv.futureDrives[0].Turning, screen)
+				}
 				remainingV = append(remainingV, iv)
 				//graphics.DrawPath(screen, iv.futurePositions...) // DEBUG print future positions
 				graphics.DrawPath(screen, iv.Target()) // DEBUG print future positions
