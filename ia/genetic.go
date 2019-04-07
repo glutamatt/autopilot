@@ -17,7 +17,7 @@ var randomPool = sync.Pool{
 }
 
 var distanceTPredict = 30.0
-var cosAngleOkThreshold = .8
+var cosAngleOkThreshold = .7
 var VehiculRadius float64
 var BlocRadius float64
 
@@ -47,8 +47,8 @@ func Genetic(
 		vehiculesFuturePositions: vehiculesFuturePositionsToSlices(vehiculesFuturePositions),
 		target:                   target,
 		costF:                    costByFarTargetDistance,
-		driveSequenceLen:         int(distanceTPredict/VehiculRadius) + 1,
-		drivesInterval:           driveInterval(vehicule.Velocity),
+		driveSequenceLen:         4,
+		drivesInterval:           500 * time.Millisecond,
 	}
 
 	if vehicule.Velocity < 1.5 && math.Cos(vehicule.Position.Angle(target)-vehicule.Rotation) < cosAngleOkThreshold {
@@ -65,7 +65,7 @@ func Genetic(
 	}
 
 	sess.computeSequences()
-	i := 30
+	i := 100
 	for {
 		i--
 		sess.naturalSelection()
@@ -109,10 +109,11 @@ func (sess *session) computeSequences() {
 }
 
 func (sess *session) naturalSelection() {
-	newSequences := []*sequence{}
-	newSequences = append(newSequences, crossOver(sess, 10, &sess.sequences, sess.vehicule)...)
-	newSequences = append(newSequences, mutateSequences(sess, 5, &sess.sequences, sess.vehicule)...)
-	newSequences = append(newSequences, generateSequences(sess.driveSequenceLen, 10, sess.vehicule)...)
+	newSequences := []*sequence{sess.sequences[0]}
+	sess.sequences = sess.sequences[:len(sess.sequences)/20]
+	newSequences = append(newSequences, crossOver(sess, 15, &sess.sequences, sess.vehicule)...)
+	newSequences = append(newSequences, mutateSequences(sess, 10, &sess.sequences, sess.vehicule)...)
+	newSequences = append(newSequences, generateSequences(sess.driveSequenceLen, 5, sess.vehicule)...)
 	sess.sequences = newSequences
 }
 
@@ -182,7 +183,8 @@ type sequence struct {
 type costFunc func(*sequence, model.Position) float64
 
 func costByFarTargetDistance(s *sequence, target model.Position) float64 {
-	return target.ManDist(s.vehicule.Position)
+	return target.EucDist(s.vehicule.Position)
+	//return target.ManDist(s.vehicule.Position)
 }
 
 func (s *sequence) compute(sess *session) {

@@ -16,6 +16,11 @@ func (p Position) ManDist(to Position) float64 {
 	return math.Abs(p.X-to.X) + math.Abs(p.Y-to.Y)
 }
 
+func (p Position) EucDist(to Position) float64 {
+	x, y := math.Abs(p.X-to.X), math.Abs(p.Y-to.Y)
+	return math.Sqrt(x*x + y*y)
+}
+
 func (p Position) Angle(to Position) float64 {
 	return math.Atan2(to.Y-p.Y, to.X-p.X)
 }
