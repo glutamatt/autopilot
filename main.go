@@ -35,14 +35,14 @@ const adherenceMax = 2.5    // m/s/s newton force
 const boostMax = 3          //m/s/s
 const breakMax = 11         //m/s/s
 const reverseMaxSpeed = 5.6 // m/S
-const securityDistance = .8
+const securityDistance = 1.0
 
 var spawneFreq = 10 * time.Second
 
 func createVehiculeManager(from, to geom.Position) *vehiculeManager {
 	return &vehiculeManager{
-		pathTicker: time.NewTicker(200 * time.Millisecond),
-		iaTicker:   time.NewTicker(40 * time.Millisecond),
+		pathTicker: time.NewTicker(500 * time.Millisecond),
+		iaTicker:   time.NewTicker(50 * time.Millisecond),
 		target:     to,
 		vehicule: &geom.Vehicule{
 			Position: from,
@@ -210,8 +210,8 @@ func main() {
 					boostVisu.Render(iv.futureDrives[0].Thrust, screen)
 				}
 				remainingV = append(remainingV, iv)
-				//graphics.DrawPath(screen, iv.futurePositions...) // DEBUG print future positions
-				graphics.DrawPath(screen, iv.Target()) // DEBUG print future positions
+				//graphics.DrawPath(screen, 0, iv.futurePositions...) // DEBUG print future positions
+				//graphics.DrawPath(screen, 1, iv.Target())           // DEBUG print future positions
 			} else {
 				iv.pathTicker.Stop()
 				iv.iaTicker.Stop()
@@ -257,7 +257,7 @@ func main() {
 		}
 		if debugVisuImg != nil {
 			debugOpt := &ebiten.DrawImageOptions{}
-			debugOpt.GeoM.Translate(groundWidth*uiScale-100, 0)
+			debugOpt.GeoM.Translate(0, 190)
 			screen.DrawImage(debugVisuImg, debugOpt)
 		}
 
@@ -290,7 +290,7 @@ func (v *vehiculeManager) Target() geom.Position {
 		return geom.Position{}
 	}
 	vel := math.Max(v.vehicule.Velocity, 0)
-	i := int(vel*4/13.8 + 3)
+	i := int(vel*6/13.8 + 3)
 	if i > len(v.pathFound) {
 		i = len(v.pathFound)
 	}

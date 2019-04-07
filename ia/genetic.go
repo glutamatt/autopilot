@@ -17,7 +17,7 @@ var randomPool = sync.Pool{
 }
 
 var distanceTPredict = 30.0
-var cosAngleOkThreshold = .7
+var cosAngleOkThreshold = .9
 var VehiculRadius float64
 var BlocRadius float64
 
@@ -48,7 +48,7 @@ func Genetic(
 		target:                   target,
 		costF:                    costByFarTargetDistance,
 		driveSequenceLen:         4,
-		drivesInterval:           500 * time.Millisecond,
+		drivesInterval:           450 * time.Millisecond,
 	}
 
 	if vehicule.Velocity < 1.5 && math.Cos(vehicule.Position.Angle(target)-vehicule.Rotation) < cosAngleOkThreshold {
@@ -65,7 +65,7 @@ func Genetic(
 	}
 
 	sess.computeSequences()
-	i := 100
+	i := 50
 	for {
 		i--
 		sess.naturalSelection()
@@ -111,9 +111,9 @@ func (sess *session) computeSequences() {
 func (sess *session) naturalSelection() {
 	newSequences := []*sequence{sess.sequences[0]}
 	sess.sequences = sess.sequences[:len(sess.sequences)/20]
-	newSequences = append(newSequences, crossOver(sess, 15, &sess.sequences, sess.vehicule)...)
-	newSequences = append(newSequences, mutateSequences(sess, 10, &sess.sequences, sess.vehicule)...)
-	newSequences = append(newSequences, generateSequences(sess.driveSequenceLen, 5, sess.vehicule)...)
+	newSequences = append(newSequences, crossOver(sess, 20, &sess.sequences, sess.vehicule)...)
+	newSequences = append(newSequences, mutateSequences(sess, 20, &sess.sequences, sess.vehicule)...)
+	newSequences = append(newSequences, generateSequences(sess.driveSequenceLen, 10, sess.vehicule)...)
 	sess.sequences = newSequences
 }
 

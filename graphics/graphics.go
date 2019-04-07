@@ -110,12 +110,13 @@ func DrawBlock(pos *model.Position, blocksImage *ebiten.Image) {
 	blocksImage.DrawImage(blockImage, &opts)
 }
 
-func DrawPath(img *ebiten.Image, positions ...model.Position) {
+func DrawPath(img *ebiten.Image, color float64, positions ...model.Position) {
 	for _, pos := range positions {
 		opts := ebiten.DrawImageOptions{}
 		opts.GeoM.Translate(float64(BlockBorder*UiScale)/-2, float64(BlockBorder*UiScale)/-2)
 		opts.GeoM.Translate(pos.X*float64(UiScale), pos.Y*float64(UiScale)*-1)
 		opts.ColorM.Scale(1.5, 1.5, 1.5, .1)
+		opts.ColorM.RotateHue(color)
 		img.DrawImage(blockImage, &opts)
 	}
 }
@@ -141,7 +142,7 @@ func SetWheelRotation(turning float64, screen *ebiten.Image) {
 	wheelOpt := &ebiten.DrawImageOptions{}
 	wheelOpt.GeoM.Translate(-50, -50)
 	wheelOpt.GeoM.Rotate(-turning * (math.Pi / 2))
-	wheelOpt.GeoM.Translate(50, 150)
+	wheelOpt.GeoM.Translate(50, 130)
 	screen.DrawImage(wheel, wheelOpt)
 }
 
@@ -159,7 +160,7 @@ func InitBoostVisu() *BoostVisu {
 func (b *BoostVisu) Render(thrust float64, img *ebiten.Image) {
 	o := &ebiten.DrawImageOptions{}
 	o.GeoM.Scale(1, -1*thrust)
-	o.GeoM.Translate(30, 270)
+	o.GeoM.Translate(100, 250)
 	o.ColorM.RotateHue(-1.55 * thrust)
 
 	img.DrawImage(b.boost, o)
