@@ -93,6 +93,7 @@ func main() {
 	blocks := make(map[geom.Position]bool)
 	spots := map[geom.Position]int{}
 	manualDrive := &geom.Driving{}
+	boostVisu := graphics.InitBoostVisu()
 
 	vehiculeImage, _ := ebiten.NewImage(int(carWidth*uiScale), int(carHeight*uiScale), ebiten.FilterNearest)
 	blocksImage, _ := ebiten.NewImage(groundWidth*uiScale, groundHeight*uiScale, ebiten.FilterNearest)
@@ -206,6 +207,7 @@ func main() {
 			if !arrived[i] {
 				if i == 0 && iv.futureDrives != nil && len(iv.futureDrives) > 0 {
 					graphics.SetWheelRotation(iv.futureDrives[0].Turning, screen)
+					boostVisu.Render(iv.futureDrives[0].Thrust, screen)
 				}
 				remainingV = append(remainingV, iv)
 				//graphics.DrawPath(screen, iv.futurePositions...) // DEBUG print future positions

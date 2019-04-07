@@ -33,22 +33,6 @@ type session struct {
 	costF                    costFunc
 }
 
-//optim to avoid loop over map keys
-func vehiculesFuturePositionsToSlices(vehiculesFuturePositions []map[model.Position]bool) [][]model.Position {
-	pos := make([][]model.Position, len(vehiculesFuturePositions))
-
-	for step, posMap := range vehiculesFuturePositions {
-		pos[step] = make([]model.Position, len(posMap))
-		i := 0
-		for p := range posMap {
-			pos[step][i] = p
-			i++
-		}
-	}
-
-	return pos
-}
-
 func Genetic(
 	vehicule *model.Vehicule,
 	previousDrives []*model.Driving,
@@ -77,6 +61,7 @@ func Genetic(
 			previousDrives = append(previousDrives, driveSequence(sess.driveSequenceLen-len(previousDrives))...)
 		}
 		sess.sequences = append(sess.sequences, &sequence{drives: previousDrives[:sess.driveSequenceLen], vehicule: copyVehicule(vehicule)})
+		sess.sequences = append(sess.sequences, &sequence{drives: append(previousDrives[1:sess.driveSequenceLen], gene()), vehicule: copyVehicule(vehicule)})
 	}
 
 	sess.computeSequences()
@@ -259,5 +244,21 @@ func Extrapol(vehicule *model.Vehicule, drive *model.Driving) []model.Position {
 		v.Drive(drive, drivesInterval.Seconds())
 		pos[i] = v.Position
 	}
+	return pos
+}
+
+//optim to avoid loop over map keys
+func vehiculesFuturePositionsToSlices(vehiculesFuturePositions []map[model.Position]bool) [][]model.Position {
+	pos := make([][]model.Position, len(vehiculesFuturePositions))
+
+	for step, posMap := range vehiculesFuturePositions {
+		pos[step] = make([]model.Position, len(posMap))
+		i := 0
+		for p := range posMap {
+			pos[step][i] = p
+			i++
+		}
+	}
+
 	return pos
 }

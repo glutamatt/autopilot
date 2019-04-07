@@ -144,3 +144,23 @@ func SetWheelRotation(turning float64, screen *ebiten.Image) {
 	wheelOpt.GeoM.Translate(50, 150)
 	screen.DrawImage(wheel, wheelOpt)
 }
+
+type BoostVisu struct {
+	boost *ebiten.Image
+}
+
+func InitBoostVisu() *BoostVisu {
+
+	boost, _ := ebiten.NewImage(10, 50, ebiten.FilterDefault)
+	boost.Fill(color.RGBA{0, 255, 0, 255})
+	return &BoostVisu{boost: boost}
+}
+
+func (b *BoostVisu) Render(thrust float64, img *ebiten.Image) {
+	o := &ebiten.DrawImageOptions{}
+	o.GeoM.Scale(1, -1*thrust)
+	o.GeoM.Translate(30, 270)
+	o.ColorM.RotateHue(-1.55 * thrust)
+
+	img.DrawImage(b.boost, o)
+}
