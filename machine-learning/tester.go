@@ -11,14 +11,15 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func main() {
 	if len(os.Args) < 3 {
-		panic("usage: command model_name model_version")
+		panic("usage: command model_name model_version data_file")
 	}
 	model, version := os.Args[1], os.Args[2]
-	lines := readDataFile("data/autopilot_2019_03_18__13_20_22.csv")
+	lines := readDataFile(os.Args[3])
 	serviceURL := fmt.Sprintf("http://localhost:8501/v1/models/%s/versions/%s:predict", model, version)
 
 	body, err := json.Marshal(&Req{
@@ -35,6 +36,7 @@ func main() {
 		log.Fatal("json.Marshal error", err)
 	}
 
+	start := time.Now()
 	resp, err := http.Post(serviceURL, "application/json", bytes.NewReader(body))
 	if err != nil {
 		log.Fatal("http post error", err)
@@ -44,8 +46,10 @@ func main() {
 	if err != nil {
 		log.Fatal("ioutil.ReadAll error", err)
 	}
+	elapsed := time.Since(start)
 
 	println(string(respBody))
+	fmt.Printf("elapsed: %s\n", elapsed.String())
 }
 
 func lineToFloats(line string) []float64 {

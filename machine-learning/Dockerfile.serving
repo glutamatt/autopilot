@@ -1,5 +1,5 @@
-FROM tensorflow/serving:1.11.1-devel as build_image
-FROM ubuntu:16.04
+FROM tensorflow/serving:1.13.0-devel as build_image
+FROM ubuntu:18.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates \
