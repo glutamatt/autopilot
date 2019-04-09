@@ -14,17 +14,18 @@ EXPOSE 8500
 # REST
 EXPOSE 8501
 
-ENV MODEL_BASE_PATH=/models
-RUN mkdir -p ${MODEL_BASE_PATH}
-WORKDIR  ${MODEL_BASE_PATH}
-ENV MODEL_NAME=first_try
+RUN mkdir -p /models
+WORKDIR /models
+ARG MODEL_NAME
 
-COPY models/export/${MODEL_NAME} ${MODEL_NAME}
+RUN echo $MODEL_NAME
 
-RUN echo '#!/bin/bash \n\n\
+COPY models/export/$MODEL_NAME $MODEL_NAME
+
+RUN echo "#!/bin/bash \n\n\
 tensorflow_model_server  --rest_api_port=8501 \
---model_name=${MODEL_NAME} --model_base_path=${MODEL_BASE_PATH}/${MODEL_NAME} \
-"$@"' > /usr/bin/tf_serving_entrypoint.sh \
+--model_name=$MODEL_NAME --model_base_path=/models/$MODEL_NAME \
+'\$@'" > /usr/bin/tf_serving_entrypoint.sh \
 && chmod +x /usr/bin/tf_serving_entrypoint.sh
 
 CMD ["/usr/bin/tf_serving_entrypoint.sh"]
