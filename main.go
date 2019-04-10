@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"os"
 	"runtime/pprof"
+	"strings"
 	"sync"
 	"time"
 
@@ -201,6 +202,21 @@ func main() {
 
 		wg.Wait()
 		close(arrivedChan)
+
+		for index, features := range generator.GetVehiculeFeatures() {
+			println("\n", index, strings.Repeat("=", 20))
+			for _, f := range features {
+				if f == 0 {
+					print("0 ")
+				} else {
+					if f == 1 {
+						print("1 ")
+					} else {
+						fmt.Printf("%.2f ", f)
+					}
+				}
+			}
+		}
 
 		remainingV := []*vehiculeManager{}
 		for i, iv := range vehicules {

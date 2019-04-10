@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/hajimehoshi/ebiten"
@@ -17,12 +16,15 @@ import (
 
 var gameBlocks map[model.Position]bool
 var chanFrame chan struct{}
+var chanFeature chan func(FeaturesByIndex)
 var chanVehicule chan vehiculeState
 var sightDistance = 80.0
 var rearDistance = 15.0
 var metersPerIndex = 4.99
 var indicesPerRow = int(sightDistance/metersPerIndex) + 2
 var debugVisu chan *ebiten.Image
+
+type FeaturesByIndex map[int][]float64
 
 type outputLine struct {
 	current vehiculeState
@@ -114,6 +116,7 @@ type vehiculeState struct {
 func Init(blocks map[model.Position]bool) chan *ebiten.Image {
 	gameBlocks = blocks
 	chanFrame = make(chan struct{})
+	chanFeature = make(chan func(FeaturesByIndex))
 	chanVehicule = make(chan vehiculeState)
 	graphics.InitConstants(100, sightDistance, rearDistance, indicesPerRow)
 	debugVisu = make(chan *ebiten.Image)
@@ -125,7 +128,6 @@ func Init(blocks map[model.Position]bool) chan *ebiten.Image {
 	csvWriter := csv.NewWriter(dataFile)
 	flushTimer := time.Tick(3 * time.Second)
 	saveTimer := time.Tick(200 * time.Millisecond)
-	predictTimer := time.Tick(2 * time.Second)
 
 	go func() {
 		vehicules := []vehiculeState{}
@@ -133,13 +135,13 @@ func Init(blocks map[model.Position]bool) chan *ebiten.Image {
 			select {
 			case <-flushTimer:
 				csvWriter.Flush()
+			case cb := <-chanFeature:
+				cb(featuresVehicules(vehicules))
 			case <-chanFrame:
 				if len(vehicules) > 0 {
 					select {
 					case <-saveTimer:
 						saveVehicules(vehicules, csvWriter)
-					case <-predictTimer:
-						featuresVehicules(vehicules)
 					default:
 					}
 					for i, v := range vehicules {
@@ -203,27 +205,13 @@ func processVehicule(vehiculeIndex int, vehicules []vehiculeState) outputLine {
 	return output
 }
 
-func featuresVehicules(vehicules []vehiculeState) {
-	feat := make(map[int][]float64, len(vehicules))
+func featuresVehicules(vehicules []vehiculeState) FeaturesByIndex {
+	feat := make(FeaturesByIndex, len(vehicules))
 	for iC := range vehicules {
 		f := processVehicule(iC, vehicules).Floats()
 		feat[vehicules[iC].index] = f[:len(f)-2]
 	}
-
-	for index, features := range feat {
-		println("\n", index, strings.Repeat("=", 20))
-		for _, f := range features {
-			if f == 0 {
-				print("0 ")
-			} else {
-				if f == 1 {
-					print("1 ")
-				} else {
-					fmt.Printf("%.2f ", f)
-				}
-			}
-		}
-	}
+	return feat
 }
 
 func saveVehicules(vehicules []vehiculeState, csvWriter *csv.Writer) {
@@ -269,6 +257,16 @@ func filterCloseBlocks(base model.Position, b map[model.Position]bool) map[model
 
 func NewFrame() {
 	chanFrame <- struct{}{}
+}
+
+func GetVehiculeFeatures() FeaturesByIndex {
+	out := make(chan FeaturesByIndex)
+	go func() {
+		chanFeature <- func(f FeaturesByIndex) {
+			out <- f
+		}
+	}()
+	return <-out
 }
 
 func AddVehicule(iv int, vehicule *model.Vehicule, target model.Position, drive *model.Driving) {
