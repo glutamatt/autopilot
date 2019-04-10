@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/hajimehoshi/ebiten"
@@ -124,6 +125,8 @@ func Init(blocks map[model.Position]bool) chan *ebiten.Image {
 	csvWriter := csv.NewWriter(dataFile)
 	flushTimer := time.Tick(3 * time.Second)
 	saveTimer := time.Tick(200 * time.Millisecond)
+	predictTimer := time.Tick(2 * time.Second)
+
 	go func() {
 		vehicules := []vehiculeState{}
 		for {
@@ -135,6 +138,8 @@ func Init(blocks map[model.Position]bool) chan *ebiten.Image {
 					select {
 					case <-saveTimer:
 						saveVehicules(vehicules, csvWriter)
+					case <-predictTimer:
+						featuresVehicules(vehicules)
 					default:
 					}
 					for i, v := range vehicules {
@@ -150,7 +155,6 @@ func Init(blocks map[model.Position]bool) chan *ebiten.Image {
 							break
 						}
 					}
-
 					vehicules = []vehiculeState{}
 				}
 			case v := <-chanVehicule:
@@ -199,10 +203,30 @@ func processVehicule(vehiculeIndex int, vehicules []vehiculeState) outputLine {
 	return output
 }
 
-func saveVehicules(vehicules []vehiculeState, csvWriter *csv.Writer) {
-	if len(vehicules) == 0 {
-		return
+func featuresVehicules(vehicules []vehiculeState) {
+	feat := make(map[int][]float64, len(vehicules))
+	for iC := range vehicules {
+		f := processVehicule(iC, vehicules).Floats()
+		feat[vehicules[iC].index] = f[:len(f)-2]
 	}
+
+	for index, features := range feat {
+		println("\n", index, strings.Repeat("=", 20))
+		for _, f := range features {
+			if f == 0 {
+				print("0 ")
+			} else {
+				if f == 1 {
+					print("1 ")
+				} else {
+					fmt.Printf("%.2f ", f)
+				}
+			}
+		}
+	}
+}
+
+func saveVehicules(vehicules []vehiculeState, csvWriter *csv.Writer) {
 	for iC := range vehicules {
 		floats := processVehicule(iC, vehicules).Floats()
 		str := make([]string, len(floats))
