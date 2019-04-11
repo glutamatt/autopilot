@@ -2,3 +2,4 @@ main
 machine-learning/data/autopilot*
 machine-learning/models/export*
 .ipynb_checkpoints
+.idea/
