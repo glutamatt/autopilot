@@ -271,10 +271,14 @@ func GetVehiculeFeatures() FeaturesByIndex {
 
 func AddVehicule(iv int, vehicule *model.Vehicule, target model.Position, drive *model.Driving) {
 	v := *vehicule
+	var d model.Driving
+	if drive != nil {
+		d = *drive
+	}
 	chanVehicule <- vehiculeState{
 		index:    iv,
 		vehicule: v,
 		target:   target,
-		drive:    *drive,
+		drive:    d,
 	}
 }

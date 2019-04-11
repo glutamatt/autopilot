@@ -9,16 +9,15 @@ import (
 	"math/rand"
 	"os"
 	"runtime/pprof"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/glutamatt/autopilot/generator"
+	"github.com/glutamatt/autopilot/model"
 
 	"github.com/glutamatt/autopilot/ia"
 
 	"github.com/glutamatt/autopilot/graphics"
-	geom "github.com/glutamatt/autopilot/model"
 
 	"github.com/hajimehoshi/ebiten"
 	"github.com/hajimehoshi/ebiten/ebitenutil"
@@ -40,12 +39,14 @@ const securityDistance = 1.0
 
 var spawneFreq = 10 * time.Second
 
-func createVehiculeManager(from, to geom.Position) *vehiculeManager {
+var deepLearning = true
+
+func createVehiculeManager(from, to model.Position) *vehiculeManager {
 	return &vehiculeManager{
 		pathTicker: time.NewTicker(500 * time.Millisecond),
 		iaTicker:   time.NewTicker(50 * time.Millisecond),
 		target:     to,
-		vehicule: &geom.Vehicule{
+		vehicule: &model.Vehicule{
 			Position: from,
 			Rotation: from.Angle(to),
 		},
@@ -72,34 +73,34 @@ func main() {
 	}
 
 	vehicules := []*vehiculeManager{}
-	geom.SetMinTurningRadius(minTurningRadius)
-	geom.SetAdherenceMax(adherenceMax)
+	model.SetMinTurningRadius(minTurningRadius)
+	model.SetAdherenceMax(adherenceMax)
 	ia.PrepareDrives()
-	geom.BoostMax = boostMax
-	geom.SecurityDistance = securityDistance
-	geom.BreakMax = breakMax
-	geom.ReverseMaxSpeed = reverseMaxSpeed
+	model.BoostMax = boostMax
+	model.SecurityDistance = securityDistance
+	model.BreakMax = breakMax
+	model.ReverseMaxSpeed = reverseMaxSpeed
 	graphics.SetTurnInc(turnWheelInc)
 	graphics.SetCarDimension(carWidth, carHeight)
 	graphics.UiScale = uiScale
 	graphics.BlockBorder = blockBorder
 	graphics.PepareWheel()
-	geom.InitPathTiles(blockBorder, groundWidth, groundHeight)
+	model.InitPathTiles(blockBorder, groundWidth, groundHeight)
 	graphics.InitBlockImage()
 	ia.PrepareDrives()
-	ia.BlocRadius = geom.InitRadiusBlock(blockBorder)
-	ia.VehiculRadius = geom.InitRadiusCar(carWidth, carHeight)
+	ia.BlocRadius = model.InitRadiusBlock(blockBorder)
+	ia.VehiculRadius = model.InitRadiusCar(carWidth, carHeight)
 	var debugVisuImg *ebiten.Image
 
-	blocks := make(map[geom.Position]bool)
-	spots := map[geom.Position]int{}
-	manualDrive := &geom.Driving{}
+	blocks := make(map[model.Position]bool)
+	spots := map[model.Position]int{}
+	manualDrive := &model.Driving{}
 	boostVisu := graphics.InitBoostVisu()
 
 	vehiculeImage, _ := ebiten.NewImage(int(carWidth*uiScale), int(carHeight*uiScale), ebiten.FilterNearest)
 	blocksImage, _ := ebiten.NewImage(groundWidth*uiScale, groundHeight*uiScale, ebiten.FilterNearest)
 
-	for _, p := range geom.GenerateBlocks(groundWidth, groundHeight) {
+	for _, p := range model.GenerateBlocks(groundWidth, groundHeight) {
 		blocks[*p] = true
 		graphics.DrawBlock(p, blocksImage)
 	}
@@ -111,9 +112,7 @@ func main() {
 	spawner := time.NewTimer(7 * time.Second)
 
 	update := func(screen *ebiten.Image) error {
-
 		generator.NewFrame()
-
 		select {
 		case <-spawner.C:
 			if len(spots) > 1 && len(vehicules) < 20 {
@@ -141,8 +140,17 @@ func main() {
 
 		arrivedChan := make(chan int)
 
-		//blocksAndCars := getBlocksAndCars(blocks, vehicules, func(v *geom.Vehicule) bool { return true })
+		//blocksAndCars := getBlocksAndCars(blocks, vehicules, func(v *model.Vehicule) bool { return true })
 		//blocksAndSlowCars :=
+
+		var allVehiculesfeatures generator.FeaturesByIndex
+
+		if deepLearning {
+			for iv, v := range vehicules {
+				generator.AddVehicule(iv, v.vehicule, v.Target(), nil)
+			}
+			allVehiculesfeatures = generator.GetVehiculeFeatures()
+		}
 
 		for iv, v := range vehicules {
 			if iv == 0 && manualDriveOn {
@@ -151,26 +159,32 @@ func main() {
 				wg.Done()
 				continue
 			}
+
 			go func(v *vehiculeManager, iv int) {
 				defer wg.Done()
 				select {
 				case <-v.iaTicker.C:
-					if len(v.pathFound) > 0 {
+					if !deepLearning && len(v.pathFound) > 0 {
 						drives, future := ia.Genetic(
 							v.vehicule,
 							v.futureDrives,
 							v.Target(),
-							getBlocksAndCars(blocks, vehicules, func(i int, v *geom.Vehicule) bool { return i != iv }),
+							getBlocksAndCars(blocks, vehicules, func(i int, v *model.Vehicule) bool { return i != iv }),
 							futureBlockedPos(iv, vehicules),
 						)
 						v.futurePositions = future
 						v.futureDrives = drives
 					}
+					if deepLearning && len(v.pathFound) > 0 {
+						if features, have := allVehiculesfeatures[iv]; have {
+							v.futureDrives = []*model.Driving{ia.NeuralNet(features)}
+						}
+					}
 				case <-v.pathTicker.C:
-					if found, path := geom.FindPath(
+					if found, path := model.FindPath(
 						v.vehicule.Position,
 						v.target,
-						getBlocksAndCars(blocks, vehicules, func(i int, v *geom.Vehicule) bool { return i != iv && math.Abs(v.Velocity) < 3 }),
+						getBlocksAndCars(blocks, vehicules, func(i int, v *model.Vehicule) bool { return i != iv && math.Abs(v.Velocity) < 3 }),
 					); found {
 						if len(path) < 3 {
 							arrivedChan <- iv
@@ -187,8 +201,12 @@ func main() {
 				default:
 				}
 				if v.futureDrives != nil {
-					generator.AddVehicule(iv, v.vehicule, v.Target(), v.futureDrives[0])
 					v.vehicule.Drive(v.futureDrives[0], 1.0/60)
+				} else {
+					v.vehicule.Drive(&model.Driving{}, 1.0/60)
+				}
+				if !deepLearning && v.futureDrives != nil {
+					generator.AddVehicule(iv, v.vehicule, v.Target(), v.futureDrives[0])
 				}
 			}(v, iv)
 		}
@@ -203,21 +221,6 @@ func main() {
 		wg.Wait()
 		close(arrivedChan)
 
-		for index, features := range generator.GetVehiculeFeatures() {
-			println("\n", index, strings.Repeat("=", 20))
-			for _, f := range features {
-				if f == 0 {
-					print("0 ")
-				} else {
-					if f == 1 {
-						print("1 ")
-					} else {
-						fmt.Printf("%.2f ", f)
-					}
-				}
-			}
-		}
-
 		remainingV := []*vehiculeManager{}
 		for i, iv := range vehicules {
 			if !arrived[i] {
@@ -226,8 +229,8 @@ func main() {
 					boostVisu.Render(iv.futureDrives[0].Thrust, screen)
 				}
 				remainingV = append(remainingV, iv)
-				//graphics.DrawPath(screen, 0, iv.futurePositions...) // DEBUG print future positions
-				//graphics.DrawPath(screen, 1, iv.Target())           // DEBUG print future positions
+				graphics.DrawPath(screen, 0, iv.futurePositions...) // DEBUG print future positions
+				graphics.DrawPath(screen, 1, iv.Target())           // DEBUG print future positions
 			} else {
 				iv.pathTicker.Stop()
 				iv.iaTicker.Stop()
@@ -235,11 +238,11 @@ func main() {
 		}
 		vehicules = remainingV
 
-		//collisions := geom.Collisions(vehicules, blocks)
+		//collisions := model.Collisions(vehicules, blocks)
 
 		wg.Add(len(vehicules))
 		for i, v := range vehicules {
-			go func(v *geom.Vehicule, i int) {
+			go func(v *model.Vehicule, i int) {
 				//_, collision := collisions[i]
 				optsChan <- graphics.VehiculeImageOptions(v, false)
 				wg.Done()
@@ -292,18 +295,18 @@ func main() {
 }
 
 type vehiculeManager struct {
-	vehicule        *geom.Vehicule
+	vehicule        *model.Vehicule
 	pathTicker      *time.Ticker
 	iaTicker        *time.Ticker
-	target          geom.Position
-	pathFound       []geom.Position
-	futurePositions []geom.Position
-	futureDrives    []*geom.Driving
+	target          model.Position
+	pathFound       []model.Position
+	futurePositions []model.Position
+	futureDrives    []*model.Driving
 }
 
-func (v *vehiculeManager) Target() geom.Position {
+func (v *vehiculeManager) Target() model.Position {
 	if v.pathFound == nil || len(v.pathFound) == 0 {
-		return geom.Position{}
+		return model.Position{}
 	}
 	vel := math.Max(v.vehicule.Velocity, 0)
 	i := int(vel*6/13.8 + 3)
@@ -314,8 +317,8 @@ func (v *vehiculeManager) Target() geom.Position {
 	return v.pathFound[pathI]
 }
 
-func spotPositions(spots map[geom.Position]int, last bool) (geom.Position, geom.Position) {
-	p := make([]geom.Position, len(spots))
+func spotPositions(spots map[model.Position]int, last bool) (model.Position, model.Position) {
+	p := make([]model.Position, len(spots))
 	for q, i := range spots {
 		p[i] = q
 	}
@@ -326,11 +329,11 @@ func spotPositions(spots map[geom.Position]int, last bool) (geom.Position, geom.
 	return p[k], p[k+1]
 }
 
-func futureBlockedPos(vehiculeKey int, vehicules []*vehiculeManager) []map[geom.Position]bool {
+func futureBlockedPos(vehiculeKey int, vehicules []*vehiculeManager) []map[model.Position]bool {
 	posLen := len(vehicules[0].futurePositions)
-	ret := make([]map[geom.Position]bool, posLen)
+	ret := make([]map[model.Position]bool, posLen)
 	for i := 0; i < posLen; i++ {
-		ret[i] = make(map[geom.Position]bool)
+		ret[i] = make(map[model.Position]bool)
 		for iv, v := range vehicules {
 			if iv != vehiculeKey && len(v.futurePositions) >= i+1 {
 				ret[i][v.futurePositions[i]] = true
@@ -340,8 +343,8 @@ func futureBlockedPos(vehiculeKey int, vehicules []*vehiculeManager) []map[geom.
 	return ret
 }
 
-func getBlocksAndCars(blocks map[geom.Position]bool, vehicules []*vehiculeManager, carFilter func(int, *geom.Vehicule) bool) *map[geom.Position]bool {
-	newBlocks := make(map[geom.Position]bool, len(blocks))
+func getBlocksAndCars(blocks map[model.Position]bool, vehicules []*vehiculeManager, carFilter func(int, *model.Vehicule) bool) *map[model.Position]bool {
+	newBlocks := make(map[model.Position]bool, len(blocks))
 	for p, v := range blocks {
 		newBlocks[p] = v
 	}
@@ -350,13 +353,13 @@ func getBlocksAndCars(blocks map[geom.Position]bool, vehicules []*vehiculeManage
 			p := v.vehicule.Position
 			p.Gap(blockBorder)
 			newBlocks[p] = true
-			//newBlocks = geom.BlocksArround(newBlocks, v.vehicule.Position, blockBorder, blockBorder, 2.0)
+			//newBlocks = model.BlocksArround(newBlocks, v.vehicule.Position, blockBorder, blockBorder, 2.0)
 		}
 	}
 	return &newBlocks
 }
 
-func freePlace(vehicules []*vehiculeManager, place geom.Position) bool {
+func freePlace(vehicules []*vehiculeManager, place model.Position) bool {
 	for _, v := range vehicules {
 		if v.vehicule.Position.ManDist(place) < carWidth {
 			return false
@@ -367,8 +370,8 @@ func freePlace(vehicules []*vehiculeManager, place geom.Position) bool {
 }
 
 /*
-func blocksButPos(blocks map[geom.Position]bool, p geom.Position) *map[geom.Position]bool {
-	newBlocks := make(map[geom.Position]bool, len(blocks))
+func blocksButPos(blocks map[model.Position]bool, p model.Position) *map[model.Position]bool {
+	newBlocks := make(map[model.Position]bool, len(blocks))
 	p.Gap(blockBorder)
 	for pos, v := range blocks {
 		if pos != p {
