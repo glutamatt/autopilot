@@ -3,3 +3,9 @@ docker run -it --rm -v `pwd`:/tf/notebooks -p 8888:8888 autopilot
 
 docker build --build-arg MODEL_NAME=model_9 --file Dockerfile.serving . --tag tfserving
 docker run -it --rm -p 8501:8501 tfserving
+
+docker build --file Dockerfile.grpc --tag tf_grpc .
+docker run -d --name=tf_grpc tf_grpc
+docker cp tf_grpc:/go/vendor .
+docker stop tf_grpc
+docker rm tf_grpc

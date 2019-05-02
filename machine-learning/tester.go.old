@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-func main() {
+func main2() {
 	if len(os.Args) < 3 {
 		panic("usage: command model_name model_version data_file")
 	}

@@ -1,0 +1,31 @@
+FROM golang:1.12.4 as go-build
+
+RUN apt-get update
+RUN apt-get install unzip
+
+RUN wget https://github.com/tensorflow/serving/archive/1.13.0.tar.gz -O tensorflow_serving.tar.gz
+RUN tar -xvzf tensorflow_serving.tar.gz
+RUN mv serving-1.13.0 /serving
+
+RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip -O protoc-3.7.1-linux-x86_64.zip
+RUN unzip protoc-3.7.1-linux-x86_64.zip -d protoc-3.7.1
+RUN mv protoc-3.7.1 /protoc
+
+RUN wget https://github.com/tensorflow/tensorflow/archive/v1.13.1.tar.gz -O tensorflow.tar.gz
+RUN tar -xvzf tensorflow.tar.gz
+RUN mv tensorflow-1.13.1 /tensorflow
+
+RUN go get -u github.com/golang/protobuf/protoc-gen-go
+
+RUN mkdir vendor
+RUN /protoc/bin/protoc -I /tensorflow -I /serving --go_out=plugins=grpc:vendor /serving/tensorflow_serving/apis/*.proto
+RUN /protoc/bin/protoc -I /tensorflow -I /serving --go_out=plugins=grpc:vendor /serving/tensorflow_serving/util/*.proto
+RUN /protoc/bin/protoc -I /tensorflow -I /serving --go_out=plugins=grpc:vendor /serving/tensorflow_serving/config/*.proto
+RUN /protoc/bin/protoc -I /tensorflow -I /serving --go_out=plugins=grpc:vendor /serving/tensorflow_serving/core/*.proto
+RUN /protoc/bin/protoc -I /tensorflow -I /serving --go_out=plugins=grpc:vendor /serving/tensorflow_serving/sources/storage_path/*.proto
+RUN /protoc/bin/protoc -I /tensorflow -I /serving --go_out=plugins=grpc:vendor /tensorflow/tensorflow/core/example/*.proto
+RUN /protoc/bin/protoc -I /tensorflow -I /serving --go_out=plugins=grpc:vendor /tensorflow/tensorflow/core/framework/*.proto
+RUN /protoc/bin/protoc -I /tensorflow -I /serving --go_out=plugins=grpc:vendor /tensorflow/tensorflow/core/lib/core/*.proto
+RUN /protoc/bin/protoc -I /tensorflow -I /serving --go_out=plugins=grpc:vendor /tensorflow/tensorflow/core/protobuf/meta_graph.proto
+RUN /protoc/bin/protoc -I /tensorflow -I /serving --go_out=plugins=grpc:vendor /tensorflow/tensorflow/core/protobuf/saver.proto
+RUN /protoc/bin/protoc -I /tensorflow -I /serving --go_out=plugins=grpc:vendor /tensorflow/tensorflow/core/protobuf/config.proto
